@@ -207,7 +207,7 @@ EventShapes calculateEventShapes(const std::vector<PseudoJet> &particles) { // c
     return shapes; // return calculated shapes
 }
 
-// ---------- On-demand histogram map ----------
+// ----------- histogram map ----------
 static std::map<std::string, TH1D*> hmap; // 1D histogram map
 
 TH1D* getHist1D(const std::string &name, const std::string &title, // 1D histogram retrieval/creation
@@ -247,7 +247,8 @@ int main() {
     TH1D *h_leadK_pT = new TH1D("h_leadK_pT", "Leading kaon pT;p_{T} [GeV];Entries", 100, 0, 50);
     TH1D *h_leadK_deltaPhi = new TH1D("h_leadK_deltaPhi", "Delta phi between leading kaons;#Delta#phi [rad];Entries", 64, -3.2, 3.2);
 
-    h_jetMult->SetDirectory(nullptr);
+    // Prevent ROOT from managing histogram memory
+    h_jetMult->SetDirectory(nullptr); 
     h_jetPt->SetDirectory(nullptr);
     h_jetEta->SetDirectory(nullptr);
     h_jetRapidity->SetDirectory(nullptr);
@@ -299,7 +300,7 @@ int main() {
             hadrons.push_back(i);
         }
 
-        // ========== LEADING HADRON ANALYSIS ==========
+        // --------------- LEADING HADRON ANALYSIS ----------------
         // Find leading pions (±211)
         std::vector<std::pair<double, int>> pions; // (momentum, index)
         for (int idx : hadrons) { // loop over hadrons
@@ -374,7 +375,7 @@ int main() {
             h_leadK_deltaPhi->Fill(dPhi); // fill delta phi histogram
         }
 
-        // ========== JET-BASED OBSERVABLES ==========
+        // ------------- JET-BASED OBSERVABLES ----------
         if (!hadrons.empty()) { // ensure there are hadrons to cluster
             std::vector<PseudoJet> fjInputs; // prepare FastJet inputs
             fjInputs.reserve(hadrons.size()); // reserve space
@@ -412,7 +413,7 @@ int main() {
                 h_jetDeltaPhi->Fill(dPhi); // fill delta phi histogram
             }
 
-            // ========== LEADING HADRON - JET CORRELATION ==========
+            // ------------ LEADING HADRON - JET CORRELATION -------------
             // For each leading pion, find which jet it belongs to and calculate z, jT
             if (pions.size() >= 2) { // at least two pions
                 for (size_t ipi = 0; ipi < 2; ++ipi) { // loop over leading two pions
@@ -466,46 +467,46 @@ int main() {
             }
             
             // Same for leading kaons
-            if (kaons.size() >= 2) {
-                for (size_t ik = 0; ik < 2; ++ik) {
-                    int k_idx = kaons[ik].second;
+            if (kaons.size() >= 2) { // at least two kaons
+                for (size_t ik = 0; ik < 2; ++ik) { // loop over leading two kaons
+                    int k_idx = kaons[ik].second; // get kaon index
                     
-                    double k_px = pythia.event[k_idx].px();
-                    double k_py = pythia.event[k_idx].py();
-                    double k_pz = pythia.event[k_idx].pz();
+                    double k_px = pythia.event[k_idx].px(); // kaon x momentum
+                    double k_py = pythia.event[k_idx].py(); // kaon y momentum
+                    double k_pz = pythia.event[k_idx].pz(); // kaon z momentum
                     
-                    for (const PseudoJet &jet : jets) {
-                        std::vector<PseudoJet> consts = jet.constituents();
-                        bool found = false;
-                        for (const PseudoJet &c : consts) {
-                            if (c.user_index() == k_idx) {
-                                found = true;
-                                break;
+                    for (const PseudoJet &jet : jets) { // loop over jets
+                        std::vector<PseudoJet> consts = jet.constituents(); // get jet constituents
+                        bool found = false; // flag for finding kaon
+                        for (const PseudoJet &c : consts) { // loop over constituents
+                            if (c.user_index() == k_idx) { // check if kaon found
+                                found = true; // set flag
+                                break; // exit loop
                             }
                         }
                         
-                        if (found) {
-                            double jpx = jet.px();
-                            double jpy = jet.py();
-                            double jpz = jet.pz();
-                            double jnorm2 = jpx*jpx + jpy*jpy + jpz*jpz;
+                        if (found) { // if kaon found in this jet
+                            double jpx = jet.px(); // jet x momentum
+                            double jpy = jet.py(); // jet y momentum
+                            double jpz = jet.pz(); // jet z momentum
+                            double jnorm2 = jpx*jpx + jpy*jpy + jpz*jpz; // jet momentum squared
                             
-                            if (jnorm2 > 0) {
-                                double pdotj = k_px*jpx + k_py*jpy + k_pz*jpz;
-                                double z = pdotj / jnorm2;
+                            if (jnorm2 > 0) { // avoid division by zero
+                                double pdotj = k_px*jpx + k_py*jpy + k_pz*jpz; // dot product
+                                double z = pdotj / jnorm2; // calculate z
                                 
-                                double px_par = (pdotj / jnorm2) * jpx;
-                                double py_par = (pdotj / jnorm2) * jpy;
-                                double pz_par = (pdotj / jnorm2) * jpz;
-                                double perp_x = k_px - px_par;
-                                double perp_y = k_py - py_par;
-                                double perp_z = k_pz - pz_par;
-                                double jT = std::sqrt(perp_x*perp_x + perp_y*perp_y + perp_z*perp_z);
+                                double px_par = (pdotj / jnorm2) * jpx; // parallel component x
+                                double py_par = (pdotj / jnorm2) * jpy; // parallel component y
+                                double pz_par = (pdotj / jnorm2) * jpz; // parallel component z
+                                double perp_x = k_px - px_par; // perpendicular component x
+                                double perp_y = k_py - py_par; // perpendicular component y
+                                double perp_z = k_pz - pz_par; // perpendicular component z
+                                double jT = std::sqrt(perp_x*perp_x + perp_y*perp_y + perp_z*perp_z); // calculate jT
                                 
-                                TH1D *hz = getHist1D("h_z_leadK", "z (leading kaons);z;Entries", 100, 0.0, 1.0);
-                                TH1D *hjT = getHist1D("h_jT_leadK", "jT (leading kaons);jT [GeV];Entries", 100, 0.0, 5.0);
-                                hz->Fill(z);
-                                hjT->Fill(jT);
+                                TH1D *hz = getHist1D("h_z_leadK", "z (leading kaons);z;Entries", 100, 0.0, 1.0); // create/fill z histogram
+                                TH1D *hjT = getHist1D("h_jT_leadK", "jT (leading kaons);jT [GeV];Entries", 100, 0.0, 5.0); // create/fill jT histogram
+                                hz->Fill(z); // fill z
+                                hjT->Fill(jT); // fill jT
                             }
                             break;
                         }
@@ -576,50 +577,50 @@ int main() {
     std::cout << "===================================\n\n";
 
     // Write histograms
-    auto writeIfNonEmpty = [&](TH1D* h) {
-        if (!h) return;
-        if (h->GetEntries() > 0) {
-            std::cout << "Writing " << h->GetName() << " entries=" << h->GetEntries() << "\n";
-            h->Write();
-        } else {
-            std::cout << "Skipping empty hist " << h->GetName() << "\n";
-            delete h;
+    auto writeIfNonEmpty = [&](TH1D* h) { // lambda to write histogram if non-empty
+        if (!h) return; // check for null
+        if (h->GetEntries() > 0) { // check if histogram has entries
+            std::cout << "Writing " << h->GetName() << " entries=" << h->GetEntries() << "\n"; // log writing
+            h->Write(); // write to file
+        } else { // empty histogram
+            std::cout << "Skipping empty hist " << h->GetName() << "\n"; // log skipping
+            delete h; // delete to free memory
         }
     };
 
     // Write global histograms
-    writeIfNonEmpty(h_jetMult);
-    writeIfNonEmpty(h_jetPt);
-    writeIfNonEmpty(h_jetEta);
-    writeIfNonEmpty(h_jetRapidity);
-    writeIfNonEmpty(h_jetDeltaPhi);
-    writeIfNonEmpty(h_jetConstMult);
-    writeIfNonEmpty(h_thrust);
-    writeIfNonEmpty(h_sphericity);
-    writeIfNonEmpty(h_circularity);
-    writeIfNonEmpty(h_leadPi_pT);
-    writeIfNonEmpty(h_leadPi_eta);
-    writeIfNonEmpty(h_leadPi_deltaPhi);
-    writeIfNonEmpty(h_leadK_pT);
-    writeIfNonEmpty(h_leadK_deltaPhi);
+    writeIfNonEmpty(h_jetMult); // write jet multiplicity histogram
+    writeIfNonEmpty(h_jetPt); // write jet pT histogram
+    writeIfNonEmpty(h_jetEta); // write jet eta histogram
+    writeIfNonEmpty(h_jetRapidity); // write jet rapidity histogram
+    writeIfNonEmpty(h_jetDeltaPhi); // write jet delta phi histogram
+    writeIfNonEmpty(h_jetConstMult); // write jet constituent multiplicity histogram
+    writeIfNonEmpty(h_thrust); // write thrust histogram
+    writeIfNonEmpty(h_sphericity); // write sphericity histogram
+    writeIfNonEmpty(h_circularity); // write circularity histogram
+    writeIfNonEmpty(h_leadPi_pT); // write leading pion pT histogram
+    writeIfNonEmpty(h_leadPi_eta); // write leading pion eta histogram
+    writeIfNonEmpty(h_leadPi_deltaPhi); // write leading pion delta phi histogram
+    writeIfNonEmpty(h_leadK_pT); // write leading kaon pT histogram
+    writeIfNonEmpty(h_leadK_deltaPhi); // write leading kaon delta phi histogram
 
     // Write on-demand histograms
-    for (auto &p : hmap) {
-        TH1D *h = p.second;
-        if (!h) continue;
-        if (h->GetEntries() > 0) {
-            std::cout << "Writing " << h->GetName() << " entries=" << h->GetEntries() << "\n";
-            h->Write();
-        } else {
-            std::cout << "Skipping empty hist " << h->GetName() << "\n";
-            delete h;
+    for (auto &p : hmap) { // loop over histogram map
+        TH1D *h = p.second; // get histogram pointer
+        if (!h) continue; // skip if null
+        if (h->GetEntries() > 0) { // check if histogram has entries
+            std::cout << "Writing " << h->GetName() << " entries=" << h->GetEntries() << "\n"; // write histogram
+            h->Write(); // write to file
+        } else { // empty histogram
+            std::cout << "Skipping empty hist " << h->GetName() << "\n"; // log skipping
+            delete h; // delete to free memory
         }
     }
 
-    fout->Close();
-    delete fout;
+    fout->Close(); // close output file
+    delete fout; // delete file pointer
 
-    pythia.stat();
+    pythia.stat(); // print Pythia statistics
 
-    return 0;
+    return 0; // exit successfully
 }
