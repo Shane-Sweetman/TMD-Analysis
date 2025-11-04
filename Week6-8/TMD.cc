@@ -80,7 +80,7 @@ AncestryInfo traceAncestry(const Event &event, int hadronIdx) {
         info.chain.push_back(current); // add to decay chain
         
         int pdg = std::abs(event[current].id()); // absolute PDG ID
-        int status = event[current].status(); // status code, whether it’s a hard-process particle, intermediate, or final
+        int status = event[current].status(); // status code, whether it's a hard-process particle, intermediate, or final
         
         // Check if we found a quark (PDG 1-5)
         if (pdg >= 1 && pdg <= 5) {
@@ -142,7 +142,7 @@ double calculateThrust(const std::vector<PseudoJet> &particles) { // calculate t
             
             double sum = 0.0; // sum of projections
             for (const auto &p : particles) { // loop over particles
-                double dot = std::abs(p.px()*nx + p.py()*ny + p.pz()*nz); // magnitude of the particle’s momentum along the chosen direction
+                double dot = std::abs(p.px()*nx + p.py()*ny + p.pz()*nz); // magnitude of the particle's momentum along the chosen direction
                 sum += dot; // accumulate
             }
             double thrust = sum / totalP; // normalize by total momentum
@@ -237,7 +237,6 @@ EventShapes calculateEventShapes(const std::vector<PseudoJet> &particles) { // c
 
 // ---------- On-demand histogram map ----------
 static std::map<std::string, TH1D*> hmap; // 1D histogram map
-static std::map<std::string, TH2D*> hmap2D; // 2D histogram map
 
 TH1D* getHist1D(const std::string &name, const std::string &title, // 1D histogram retrieval/creation
                 int nbins = 64, double xmin = -3.2, double xmax = 3.2) { // default binning
@@ -249,54 +248,29 @@ TH1D* getHist1D(const std::string &name, const std::string &title, // 1D histogr
     return h; // return new histogram
 }
 
-TH2D* getHist2D(const std::string &name, const std::string &title, // 2D histogram retrieval/creation
-                int nbinsx, double xmin, double xmax, // x-axis binning
-                int nbinsy, double ymin, double ymax) { // y-axis binning
-    auto it = hmap2D.find(name); // check if histogram exists
-    if (it != hmap2D.end()) return it->second; // return existing histogram
-    TH2D *h = new TH2D(name.c_str(), title.c_str(), nbinsx, xmin, xmax, nbinsy, ymin, ymax); // create new histogram
-    h->SetDirectory(nullptr); // prevent ROOT from managing memory
-    hmap2D[name] = h; // store in map
-    return h; // return new histogram
-}
-
 int main() {
-    TFile *fout = new TFile("ee_hadron_corr.root", "RECREATE");
-
-    // Global pair-based histograms
-    TH1D *h_dPhi        = new TH1D("h_dPhi", "Delta phi between hadron pairs;Delta phi [rad];Entries", 64, -3.2, 3.2);
-    TH1D *h_pTimbalance = new TH1D("h_pTimbalance", "pT imbalance;|Delta pT| [GeV];Entries", 100, 0, 10);
-    TH1D *h_OS          = new TH1D("h_OS", "Opposite-sign hadron pairs;Delta phi [rad];Entries", 64, -3.2, 3.2);
-    TH1D *h_SS          = new TH1D("h_SS", "Same-sign hadron pairs;Delta phi [rad];Entries", 64, -3.2, 3.2);
+    TFile *fout = new TFile("ee_hadron_corr.root", "RECREATE"); // creates root file
 
     // Jet-based observables
-    TH1D *h_jetMult     = new TH1D("h_jetMult", "Jet multiplicity per event;N_{jets};Entries", 20, 0, 20);
-    TH1D *h_jetPt       = new TH1D("h_jetPt", "Jet pT spectrum;p_{T} [GeV];Entries", 100, 0, 50);
-    TH1D *h_jetEta      = new TH1D("h_jetEta", "Jet pseudorapidity;#eta;Entries", 100, -5, 5);
-    TH1D *h_jetRapidity = new TH1D("h_jetRapidity", "Jet rapidity;y;Entries", 100, -5, 5);
-    TH1D *h_jetDeltaPhi = new TH1D("h_jetDeltaPhi", "Delta phi between leading jets;#Delta#phi [rad];Entries", 64, -3.2, 3.2);
-    TH1D *h_jetConstMult = new TH1D("h_jetConstMult", "Jet constituent multiplicity;N_{constituents};Entries", 100, 0, 100);
+    TH1D *h_jetMult     = new TH1D("h_jetMult", "Jet multiplicity per event;N_{jets};Entries", 20, 0, 20); // number of jets
+    TH1D *h_jetPt       = new TH1D("h_jetPt", "Jet pT spectrum;p_{T} [GeV];Entries", 100, 0, 50); // jet transverse momentum
+    TH1D *h_jetEta      = new TH1D("h_jetEta", "Jet pseudorapidity;#eta;Entries", 100, -5, 5); // jet pseudorapidity
+    TH1D *h_jetRapidity = new TH1D("h_jetRapidity", "Jet rapidity;y;Entries", 100, -5, 5); // jet rapidity
+    TH1D *h_jetDeltaPhi = new TH1D("h_jetDeltaPhi", "Delta phi between leading jets;#Delta#phi [rad];Entries", 64, -3.2, 3.2); // azimuthal angle difference between leading jets
+    TH1D *h_jetConstMult = new TH1D("h_jetConstMult", "Jet constituent multiplicity;N_{constituents};Entries", 100, 0, 100); // number of constituents in jets
     
     // Event shapes
-    TH1D *h_thrust      = new TH1D("h_thrust", "Event thrust;T;Entries", 100, 0, 1);
-    TH1D *h_sphericity  = new TH1D("h_sphericity", "Event sphericity;S;Entries", 100, 0, 1);
-    TH1D *h_circularity = new TH1D("h_circularity", "Event circularity;C;Entries", 100, 0, 1);
-    
-    // 2D correlations
-    TH2D *h_jetPt_vs_Eta = new TH2D("h_jetPt_vs_Eta", "Jet pT vs Eta;#eta;p_{T} [GeV]", 50, -5, 5, 50, 0, 50);
-    TH2D *h_thrust_vs_sphericity = new TH2D("h_thrust_vs_sphericity", "Thrust vs Sphericity;S;T", 50, 0, 1, 50, 0, 1);
+    TH1D *h_thrust      = new TH1D("h_thrust", "Event thrust;T;Entries", 100, 0, 1); // thrust distribution
+    TH1D *h_sphericity  = new TH1D("h_sphericity", "Event sphericity;S;Entries", 100, 0, 1); // sphericity distribution
+    TH1D *h_circularity = new TH1D("h_circularity", "Event circularity;C;Entries", 100, 0, 1); // circularity distribution
 
-    // Leading hadron observables (NEW)
-    TH1D *h_leadPi_pT = new TH1D("h_leadPi_pT", "Leading pion pT;p_{T} [GeV];Entries", 100, 0, 50);
-    TH1D *h_leadPi_eta = new TH1D("h_leadPi_eta", "Leading pion eta;#eta;Entries", 100, -5, 5);
+    // Leading hadron observables 
+    TH1D *h_leadPi_pT = new TH1D("h_leadPi_pT", "Leading pion pT;p_{T} [GeV];Entries", 100, 0, 50); // leading pion transverse momentum
+    TH1D *h_leadPi_eta = new TH1D("h_leadPi_eta", "Leading pion eta;#eta;Entries", 100, -5, 5); // leading pion pseudorapidity
     TH1D *h_leadPi_deltaPhi = new TH1D("h_leadPi_deltaPhi", "Delta phi between leading pions;#Delta#phi [rad];Entries", 64, -3.2, 3.2);
     TH1D *h_leadK_pT = new TH1D("h_leadK_pT", "Leading kaon pT;p_{T} [GeV];Entries", 100, 0, 50);
     TH1D *h_leadK_deltaPhi = new TH1D("h_leadK_deltaPhi", "Delta phi between leading kaons;#Delta#phi [rad];Entries", 64, -3.2, 3.2);
 
-    h_dPhi->SetDirectory(nullptr);
-    h_pTimbalance->SetDirectory(nullptr);
-    h_OS->SetDirectory(nullptr);
-    h_SS->SetDirectory(nullptr);
     h_jetMult->SetDirectory(nullptr);
     h_jetPt->SetDirectory(nullptr);
     h_jetEta->SetDirectory(nullptr);
@@ -306,8 +280,6 @@ int main() {
     h_thrust->SetDirectory(nullptr);
     h_sphericity->SetDirectory(nullptr);
     h_circularity->SetDirectory(nullptr);
-    h_jetPt_vs_Eta->SetDirectory(nullptr);
-    h_thrust_vs_sphericity->SetDirectory(nullptr);
     h_leadPi_pT->SetDirectory(nullptr);
     h_leadPi_eta->SetDirectory(nullptr);
     h_leadPi_deltaPhi->SetDirectory(nullptr);
@@ -316,43 +288,42 @@ int main() {
 
     // Pythia setup
     Pythia pythia;
-    pythia.readString("Beams:idA = -11");
-    pythia.readString("Beams:idB = 11");
-    pythia.readString("Beams:eCM = 91.2");
-    pythia.readString("PDF:lepton = off");
-    pythia.readString("HadronLevel:all = on");
-    pythia.readString("WeakSingleBoson:ffbar2gmZ = on");
-    pythia.readString("Random:setSeed = on");
-    pythia.readString("Random:seed = 123456788");
+    pythia.readString("Beams:idA = -11"); // electron beam
+    pythia.readString("Beams:idB = 11"); // positron beam
+    pythia.readString("Beams:eCM = 91.2"); // center-of-mass energy at Z pole
+    pythia.readString("PDF:lepton = off"); // no PDF for leptons
+    pythia.readString("HadronLevel:all = on"); // enable hadronization
+    pythia.readString("WeakSingleBoson:ffbar2gmZ = on"); // enable e+e- -> Z/gamma*
+    pythia.readString("Random:setSeed = on"); // set random seed
+    pythia.readString("Random:seed = 123456788"); // specific seed for reproducibility
 
-    if (!pythia.init()) {
-        std::cerr << "Pythia initialization failed\n";
-        return 1;
+    if (!pythia.init()) { // initialize Pythia
+        std::cerr << "Pythia initialization failed\n"; // error handling
+        return 1; // exit if failed
     }
 
-    const int nEvents = 20000;
-    int totalPairs = 0;
-    int eventsWithTag = 0;
-    int eventsWithLeadingPions = 0;
-    int eventsWithLeadingKaons = 0;
+    const int nEvents = 20000; // number of events to generate
+    int eventsWithTag = 0; // events with identified primary quark flavor
+    int eventsWithLeadingPions = 0; // events with leading pions
+    int eventsWithLeadingKaons = 0; // events with leading kaons
 
     // FastJet parameters
-    double R = 0.6;
-    double jetPtMin = 1.0;
+    double R = 0.6; // jet radius parameter
+    double jetPtMin = 1.0; // minimum jet pT
 
     // Event loop
-    for (int ievt = 0; ievt < nEvents; ++ievt) {
-        if (!pythia.next()) continue;
+    for (int ievt = 0; ievt < nEvents; ++ievt) { // loop over events
+        if (!pythia.next()) continue; // generate next event, skip if fails
 
-        int flavorID = getPrimaryQuarkFlavor(pythia.event);
-        std::string flavorName;
-        if (flavorID == 1) flavorName = "down";
+        int flavorID = getPrimaryQuarkFlavor(pythia.event); // get primary quark flavor
+        std::string flavorName; // flavor name string
+        if (flavorID == 1) flavorName = "down"; 
         else if (flavorID == 2) flavorName = "up";
         else if (flavorID == 3) flavorName = "strange";
         else if (flavorID == 4) flavorName = "heavy";
         else flavorName = "unknown";
 
-        if (flavorID != 0) ++eventsWithTag;
+        if (flavorID != 0) ++eventsWithTag; // count events with identified flavor
 
         // Collect final-state charged hadrons
         std::vector<int> hadrons;
@@ -366,295 +337,180 @@ int main() {
         // ========== LEADING HADRON ANALYSIS ==========
         // Find leading pions (±211)
         std::vector<std::pair<double, int>> pions; // (momentum, index)
-        for (int idx : hadrons) {
-            int pdg = std::abs(pythia.event[idx].id());
-            if (pdg == 211) {
-                double p = pythia.event[idx].pAbs();
-                pions.push_back({p, idx});
+        for (int idx : hadrons) { // loop over hadrons
+            int pdg = std::abs(pythia.event[idx].id()); // absolute PDG ID
+            if (pdg == 211) { // check for charged pions
+                double p = pythia.event[idx].pAbs(); // get momentum magnitude
+                pions.push_back({p, idx}); // store pair
             }
         }
-        std::sort(pions.begin(), pions.end(), std::greater<std::pair<double,int>>());
+        std::sort(pions.begin(), pions.end(), std::greater<std::pair<double,int>>()); // sort by momentum descending
         
         // Find leading kaons (±321)
-        std::vector<std::pair<double, int>> kaons;
-        for (int idx : hadrons) {
-            int pdg = std::abs(pythia.event[idx].id());
-            if (pdg == 321) {
-                double p = pythia.event[idx].pAbs();
-                kaons.push_back({p, idx});
+        std::vector<std::pair<double, int>> kaons; // (momentum, index)
+        for (int idx : hadrons) { // loop over hadrons
+            int pdg = std::abs(pythia.event[idx].id()); // absolute PDG ID
+            if (pdg == 321) { // check for charged kaons
+                double p = pythia.event[idx].pAbs(); // get momentum magnitude
+                kaons.push_back({p, idx}); // store pair
             }
         }
-        std::sort(kaons.begin(), kaons.end(), std::greater<std::pair<double,int>>());
+        std::sort(kaons.begin(), kaons.end(), std::greater<std::pair<double,int>>()); // sort by momentum descending
 
         // Analyze leading two pions
-        if (pions.size() >= 2) {
-            ++eventsWithLeadingPions;
-            int pi1_idx = pions[0].second;
-            int pi2_idx = pions[1].second;
+        if (pions.size() >= 2) { // at least two pions found
+            ++eventsWithLeadingPions; // count events with leading pions
+            int pi1_idx = pions[0].second; // index of leading pion
+            int pi2_idx = pions[1].second; // index of subleading pion
             
             // Trace ancestry
-            AncestryInfo anc1 = traceAncestry(pythia.event, pi1_idx);
-            AncestryInfo anc2 = traceAncestry(pythia.event, pi2_idx);
+            AncestryInfo anc1 = traceAncestry(pythia.event, pi1_idx); // trace first pion
+            AncestryInfo anc2 = traceAncestry(pythia.event, pi2_idx); // trace second pion
             
             // Kinematics
-            double pT1 = pythia.event[pi1_idx].pT();
-            double pT2 = pythia.event[pi2_idx].pT();
-            double eta1 = pythia.event[pi1_idx].eta();
-            double eta2 = pythia.event[pi2_idx].eta();
-            double phi1 = pythia.event[pi1_idx].phi();
-            double phi2 = pythia.event[pi2_idx].phi();
+            double pT1 = pythia.event[pi1_idx].pT(); // transverse momentum of first pion
+            double pT2 = pythia.event[pi2_idx].pT(); // transverse momentum of second pion
+            double eta1 = pythia.event[pi1_idx].eta(); // pseudorapidity of first pion
+            double eta2 = pythia.event[pi2_idx].eta(); //   pseudorapidity of second pion
+            double phi1 = pythia.event[pi1_idx].phi(); // azimuthal angle of first pion
+            double phi2 = pythia.event[pi2_idx].phi(); // azimuthal angle of second pion
             
-            h_leadPi_pT->Fill(pT1);
-            h_leadPi_pT->Fill(pT2);
-            h_leadPi_eta->Fill(eta1);
-            h_leadPi_eta->Fill(eta2);
+            h_leadPi_pT->Fill(pT1); // fill leading pion pT histogram
+            h_leadPi_pT->Fill(pT2); // fill subleading pion pT histogram
+            h_leadPi_eta->Fill(eta1); // fill leading pion eta histogram
+            h_leadPi_eta->Fill(eta2); // fill subleading pion eta histogram
             
-            double dPhi = phi1 - phi2;
-            if (dPhi > M_PI) dPhi -= 2.0*M_PI;
-            if (dPhi < -M_PI) dPhi += 2.0*M_PI;
-            h_leadPi_deltaPhi->Fill(dPhi);
-            
-            // Flavor-tagged leading pion observables
-            if (anc1.fromPrimaryQuark && anc1.motherQuarkFlavor > 0) {
-                std::string qflavor = (anc1.motherQuarkFlavor == 1) ? "down" :
-                                     (anc1.motherQuarkFlavor == 2) ? "up" :
-                                     (anc1.motherQuarkFlavor == 3) ? "strange" : "heavy";
-                TH1D *hpt = getHist1D("h_leadPi_pT_from_"+qflavor, 
-                    ("Leading #pi from "+qflavor+" quark;p_{T} [GeV];Entries").c_str(), 100, 0, 50);
-                TH1D *heta = getHist1D("h_leadPi_eta_from_"+qflavor,
-                    ("Leading #pi from "+qflavor+" quark;#eta;Entries").c_str(), 100, -5, 5);
-                hpt->Fill(pT1);
-                heta->Fill(eta1);
-            }
-            
-            if (anc2.fromPrimaryQuark && anc2.motherQuarkFlavor > 0) {
-                std::string qflavor = (anc2.motherQuarkFlavor == 1) ? "down" :
-                                     (anc2.motherQuarkFlavor == 2) ? "up" :
-                                     (anc2.motherQuarkFlavor == 3) ? "strange" : "heavy";
-                TH1D *hpt = getHist1D("h_leadPi_pT_from_"+qflavor,
-                    ("Leading #pi from "+qflavor+" quark;p_{T} [GeV];Entries").c_str(), 100, 0, 50);
-                TH1D *heta = getHist1D("h_leadPi_eta_from_"+qflavor,
-                    ("Leading #pi from "+qflavor+" quark;#eta;Entries").c_str(), 100, -5, 5);
-                hpt->Fill(pT2);
-                heta->Fill(eta2);
-            }
-            
-            // Correlation between leading pions from opposite quarks
-            if (anc1.fromPrimaryQuark && anc2.fromPrimaryQuark &&
-                anc1.motherQuarkFlavor > 0 && anc2.motherQuarkFlavor > 0 &&
-                anc1.motherQuarkFlavor != anc2.motherQuarkFlavor) {
-                TH1D *hdphi_opp = getHist1D("h_leadPi_deltaPhi_oppositeQuarks",
-                    "Leading #pi #Delta#phi (opposite mother quarks);#Delta#phi [rad];Entries", 64, -3.2, 3.2);
-                hdphi_opp->Fill(dPhi);
-            }
+            double dPhi = phi1 - phi2; // calculate delta phi
+            if (dPhi > M_PI) dPhi -= 2.0*M_PI; // wrap to [-pi, pi]
+            if (dPhi < -M_PI) dPhi += 2.0*M_PI; // wrap to [-pi, pi]
+            h_leadPi_deltaPhi->Fill(dPhi); // fill delta phi histogram
         }
         
         // Analyze leading two kaons
-        if (kaons.size() >= 2) {
-            ++eventsWithLeadingKaons;
-            int k1_idx = kaons[0].second;
-            int k2_idx = kaons[1].second;
+        if (kaons.size() >= 2) { // at least two kaons found
+            ++eventsWithLeadingKaons; // count events with leading kaons
+            int k1_idx = kaons[0].second; // index of leading kaon
+            int k2_idx = kaons[1].second; // index of subleading kaon
             
-            AncestryInfo anc1 = traceAncestry(pythia.event, k1_idx);
-            AncestryInfo anc2 = traceAncestry(pythia.event, k2_idx);
+            AncestryInfo anc1 = traceAncestry(pythia.event, k1_idx); // trace first kaon
+            AncestryInfo anc2 = traceAncestry(pythia.event, k2_idx); // trace second kaon
             
-            double pT1 = pythia.event[k1_idx].pT();
-            double pT2 = pythia.event[k2_idx].pT();
-            double phi1 = pythia.event[k1_idx].phi();
-            double phi2 = pythia.event[k2_idx].phi();
+            double pT1 = pythia.event[k1_idx].pT(); // transverse momentum of first kaon
+            double pT2 = pythia.event[k2_idx].pT(); // transverse momentum of second kaon
+            double phi1 = pythia.event[k1_idx].phi(); // azimuthal angle of first kaon
+            double phi2 = pythia.event[k2_idx].phi(); // azimuthal angle of second kaon
             
-            h_leadK_pT->Fill(pT1);
-            h_leadK_pT->Fill(pT2);
+            h_leadK_pT->Fill(pT1); // fill leading kaon pT histogram
+            h_leadK_pT->Fill(pT2); //   fill subleading kaon pT histogram
             
-            double dPhi = phi1 - phi2;
-            if (dPhi > M_PI) dPhi -= 2.0*M_PI;
-            if (dPhi < -M_PI) dPhi += 2.0*M_PI;
-            h_leadK_deltaPhi->Fill(dPhi);
-            
-            // Flavor-tagged kaon observables
-            if (anc1.fromPrimaryQuark && anc1.motherQuarkFlavor > 0) {
-                std::string qflavor = (anc1.motherQuarkFlavor == 1) ? "down" :
-                                     (anc1.motherQuarkFlavor == 2) ? "up" :
-                                     (anc1.motherQuarkFlavor == 3) ? "strange" : "heavy";
-                TH1D *hpt = getHist1D("h_leadK_pT_from_"+qflavor,
-                    ("Leading K from "+qflavor+" quark;p_{T} [GeV];Entries").c_str(), 100, 0, 50);
-                hpt->Fill(pT1);
-            }
-            if (anc2.fromPrimaryQuark && anc2.motherQuarkFlavor > 0) {
-                std::string qflavor = (anc2.motherQuarkFlavor == 1) ? "down" :
-                                     (anc2.motherQuarkFlavor == 2) ? "up" :
-                                     (anc2.motherQuarkFlavor == 3) ? "strange" : "heavy";
-                TH1D *hpt = getHist1D("h_leadK_pT_from_"+qflavor,
-                    ("Leading K from "+qflavor+" quark;p_{T} [GeV];Entries").c_str(), 100, 0, 50);
-                hpt->Fill(pT2);
-            }
-        }
-
-        // ========== ORIGINAL PAIR-BASED OBSERVABLES ==========
-        for (size_t a = 0; a < hadrons.size(); ++a) {
-            for (size_t b = a + 1; b < hadrons.size(); ++b) {
-                int ia = hadrons[a];
-                int ib = hadrons[b];
-
-                double px1 = pythia.event[ia].px();
-                double py1 = pythia.event[ia].py();
-                double px2 = pythia.event[ib].px();
-                double py2 = pythia.event[ib].py();
-
-                double phi1 = std::atan2(py1, px1);
-                double phi2 = std::atan2(py2, px2);
-                double dPhi = phi1 - phi2;
-                if (dPhi > M_PI)  dPhi -= 2.0*M_PI;
-                if (dPhi < -M_PI) dPhi += 2.0*M_PI;
-
-                double pT1 = std::sqrt(px1*px1 + py1*py1);
-                double pT2 = std::sqrt(px2*px2 + py2*py2);
-                double pTimb = std::fabs(pT1 - pT2);
-
-                h_dPhi->Fill(dPhi);
-                h_pTimbalance->Fill(pTimb);
-
-                if (flavorID != 0) {
-                    std::ostringstream dn, pn;
-                    dn << "h_dPhi_" << flavorName;
-                    pn << "h_pTimbalance_" << flavorName;
-                    TH1D *hdf = getHist1D(dn.str(), ("Delta phi ("+flavorName+");Delta phi [rad];Entries").c_str(), 64, -3.2, 3.2);
-                    TH1D *hpT = getHist1D(pn.str(), ("pT imbalance ("+flavorName+");|Delta pT| [GeV];Entries").c_str(), 100, 0., 10.);
-                    hdf->Fill(dPhi);
-                    hpT->Fill(pTimb);
-                }
-
-                int qprod = pythia.event[ia].charge() * pythia.event[ib].charge();
-                if (qprod < 0) h_OS->Fill(dPhi);
-                else           h_SS->Fill(dPhi);
-
-                ++totalPairs;
-            }
+            double dPhi = phi1 - phi2; // calculate delta phi
+            if (dPhi > M_PI) dPhi -= 2.0*M_PI; // wrap to [-pi, pi]
+            if (dPhi < -M_PI) dPhi += 2.0*M_PI; // wrap to [-pi, pi]
+            h_leadK_deltaPhi->Fill(dPhi); // fill delta phi histogram
         }
 
         // ========== JET-BASED OBSERVABLES ==========
-        if (!hadrons.empty()) {
-            std::vector<PseudoJet> fjInputs;
-            fjInputs.reserve(hadrons.size());
-            for (int idx : hadrons) {
-                double px = pythia.event[idx].px();
-                double py = pythia.event[idx].py();
-                double pz = pythia.event[idx].pz();
-                double E  = pythia.event[idx].e();
-                PseudoJet pj(px, py, pz, E);
-                pj.set_user_index(idx);
-                fjInputs.push_back(pj);
+        if (!hadrons.empty()) { // ensure there are hadrons to cluster
+            std::vector<PseudoJet> fjInputs; // prepare FastJet inputs
+            fjInputs.reserve(hadrons.size()); // reserve space
+            for (int idx : hadrons) { // loop over hadrons
+                double px = pythia.event[idx].px(); // get x momentum component
+                double py = pythia.event[idx].py(); // get y momentum component
+                double pz = pythia.event[idx].pz(); // get z momentum component
+                double E  = pythia.event[idx].e(); // get energy
+                PseudoJet pj(px, py, pz, E); // create PseudoJet
+                pj.set_user_index(idx); // store original index
+                fjInputs.push_back(pj); // add to FastJet inputs
             }
 
-            JetDefinition jetDef(antikt_algorithm, R);
-            ClusterSequence cs(fjInputs, jetDef);
-            std::vector<PseudoJet> jets = sorted_by_pt(cs.inclusive_jets(jetPtMin));
+            JetDefinition jetDef(antikt_algorithm, R); // define jet algorithm
+            ClusterSequence cs(fjInputs, jetDef); // cluster jets
+            std::vector<PseudoJet> jets = sorted_by_pt(cs.inclusive_jets(jetPtMin)); // get jets above pT threshold
 
             // Jet multiplicity
-            int nJets = jets.size();
-            h_jetMult->Fill(nJets);
-            if (flavorID != 0) {
-                TH1D *hmult = getHist1D("h_jetMult_"+flavorName, ("Jet multiplicity ("+flavorName+");N_{jets};Entries").c_str(), 20, 0, 20);
-                hmult->Fill(nJets);
+            int nJets = jets.size(); // number of jets found
+            h_jetMult->Fill(nJets); // fill jet multiplicity histogram
+            if (flavorID != 0) { // flavor-tagged jet multiplicity
+                TH1D *hmult = getHist1D("h_jetMult_"+flavorName, ("Jet multiplicity ("+flavorName+");N_{jets};Entries").c_str(), 20, 0, 20); // create histogram
+                hmult->Fill(nJets);// fill histogram
             }
 
             // Event shapes
-            EventShapes shapes = calculateEventShapes(fjInputs);
-            h_thrust->Fill(shapes.thrust);
-            h_sphericity->Fill(shapes.sphericity);
-            h_circularity->Fill(shapes.circularity);
-            h_thrust_vs_sphericity->Fill(shapes.sphericity, shapes.thrust);
+            EventShapes shapes = calculateEventShapes(fjInputs); // calculate event shapes
+            h_thrust->Fill(shapes.thrust); // fill thrust histogram
+            h_sphericity->Fill(shapes.sphericity); // fill sphericity histogram
+            h_circularity->Fill(shapes.circularity); // fill circularity histogram
             
-            if (flavorID != 0) {
-                TH1D *hT = getHist1D("h_thrust_"+flavorName, ("Thrust ("+flavorName+");T;Entries").c_str(), 100, 0, 1);
-                TH1D *hS = getHist1D("h_sphericity_"+flavorName, ("Sphericity ("+flavorName+");S;Entries").c_str(), 100, 0, 1);
-                TH1D *hC = getHist1D("h_circularity_"+flavorName, ("Circularity ("+flavorName+");C;Entries").c_str(), 100, 0, 1);
-                hT->Fill(shapes.thrust);
-                hS->Fill(shapes.sphericity);
-                hC->Fill(shapes.circularity);
+            if (flavorID != 0) { // flavor-tagged event shapes
+                TH1D *hT = getHist1D("h_thrust_"+flavorName, ("Thrust ("+flavorName+");T;Entries").c_str(), 100, 0, 1); // create histogram
+                TH1D *hS = getHist1D("h_sphericity_"+flavorName, ("Sphericity ("+flavorName+");S;Entries").c_str(), 100, 0, 1); // create histogram
+                TH1D *hC = getHist1D("h_circularity_"+flavorName, ("Circularity ("+flavorName+");C;Entries").c_str(), 100, 0, 1); // create histogram
+                hT->Fill(shapes.thrust); // fill thrust
+                hS->Fill(shapes.sphericity); // fill sphericity 
+                hC->Fill(shapes.circularity); // fill circularity
             }
 
             // Delta phi between leading jets
-            if (jets.size() >= 2) {
-                double phi1 = jets[0].phi();
-                double phi2 = jets[1].phi();
-                double dPhi = phi1 - phi2;
-                if (dPhi > M_PI)  dPhi -= 2.0*M_PI;
-                if (dPhi < -M_PI) dPhi += 2.0*M_PI;
-                h_jetDeltaPhi->Fill(dPhi);
+            if (jets.size() >= 2) { // at least two jets found
+                double phi1 = jets[0].phi(); // leading jet phi
+                double phi2 = jets[1].phi(); // subleading jet phi
+                double dPhi = phi1 - phi2; // calculate delta phi
+                if (dPhi > M_PI)  dPhi -= 2.0*M_PI; // wrap to [-pi, pi]
+                if (dPhi < -M_PI) dPhi += 2.0*M_PI; // wrap to [-pi, pi]
+                h_jetDeltaPhi->Fill(dPhi); // fill delta phi histogram
                 
-                if (flavorID != 0) {
-                    TH1D *hdphi = getHist1D("h_jetDeltaPhi_"+flavorName, ("Jet #Delta#phi ("+flavorName+");#Delta#phi [rad];Entries").c_str(), 64, -3.2, 3.2);
-                    hdphi->Fill(dPhi);
+                if (flavorID != 0) { // flavor-tagged delta phi
+                    TH1D *hdphi = getHist1D("h_jetDeltaPhi_"+flavorName, ("Jet #Delta#phi ("+flavorName+");#Delta#phi [rad];Entries").c_str(), 64, -3.2, 3.2); // create histogram
+                    hdphi->Fill(dPhi); // fill histogram
                 }
             }
 
             // ========== LEADING HADRON - JET CORRELATION ==========
             // For each leading pion, find which jet it belongs to and calculate z, jT
-            if (pions.size() >= 2) {
-                for (size_t ipi = 0; ipi < 2; ++ipi) {
-                    int pi_idx = pions[ipi].second;
-                    AncestryInfo anc = traceAncestry(pythia.event, pi_idx);
+            if (pions.size() >= 2) { // at least two pions
+                for (size_t ipi = 0; ipi < 2; ++ipi) { // loop over leading two pions
+                    int pi_idx = pions[ipi].second; // get pion index
                     
-                    double pi_px = pythia.event[pi_idx].px();
-                    double pi_py = pythia.event[pi_idx].py();
-                    double pi_pz = pythia.event[pi_idx].pz();
+                    double pi_px = pythia.event[pi_idx].px(); // pion x momentum
+                    double pi_py = pythia.event[pi_idx].py(); // pion y momentum
+                    double pi_pz = pythia.event[pi_idx].pz(); // pion z momentum
                     
                     // Find which jet contains this pion
-                    for (const PseudoJet &jet : jets) {
-                        std::vector<PseudoJet> consts = jet.constituents();
-                        bool found = false;
-                        for (const PseudoJet &c : consts) {
-                            if (c.user_index() == pi_idx) {
-                                found = true;
-                                break;
+                    for (const PseudoJet &jet : jets) { // loop over jets
+                        std::vector<PseudoJet> consts = jet.constituents(); // get jet constituents
+                        bool found = false; // flag for finding pion
+                        for (const PseudoJet &c : consts) { // loop over constituents
+                            if (c.user_index() == pi_idx) { // check if pion found
+                                found = true; // set flag
+                                break; // exit loop
                             }
                         }
                         
-                        if (found) {
-                            double jpx = jet.px();
-                            double jpy = jet.py();
-                            double jpz = jet.pz();
-                            double jnorm2 = jpx*jpx + jpy*jpy + jpz*jpz;
+                        if (found) { // if pion found in this jet
+                            double jpx = jet.px(); // jet x momentum
+                            double jpy = jet.py(); // jet y momentum
+                            double jpz = jet.pz(); // jet z momentum
+                            double jnorm2 = jpx*jpx + jpy*jpy + jpz*jpz; // jet momentum squared
                             
-                            if (jnorm2 > 0) {
-                                // Calculate z (fragmentation variable)
-                                double pdotj = pi_px*jpx + pi_py*jpy + pi_pz*jpz;
-                                double z = pdotj / jnorm2;
+                            if (jnorm2 > 0) { // avoid division by zero
+                                // Calculate z (fragmentation variable) 
+                                double pdotj = pi_px*jpx + pi_py*jpy + pi_pz*jpz; // dot product
+                                double z = pdotj / jnorm2; // calculate z
                                 
                                 // Calculate jT (transverse momentum relative to jet)
-                                double px_par = (pdotj / jnorm2) * jpx;
-                                double py_par = (pdotj / jnorm2) * jpy;
-                                double pz_par = (pdotj / jnorm2) * jpz;
-                                double perp_x = pi_px - px_par;
-                                double perp_y = pi_py - py_par;
-                                double perp_z = pi_pz - pz_par;
-                                double jT = std::sqrt(perp_x*perp_x + perp_y*perp_y + perp_z*perp_z);
+                                double px_par = (pdotj / jnorm2) * jpx; // parallel component x
+                                double py_par = (pdotj / jnorm2) * jpy; // parallel component y
+                                double pz_par = (pdotj / jnorm2) * jpz; // parallel component z
+                                double perp_x = pi_px - px_par; // perpendicular component x
+                                double perp_y = pi_py - py_par; // perpendicular component y
+                                double perp_z = pi_pz - pz_par; // perpendicular component z
+                                double jT = std::sqrt(perp_x*perp_x + perp_y*perp_y + perp_z*perp_z); // calculate jT
                                 
                                 // Fill global leading pion z and jT
-                                TH1D *hz = getHist1D("h_z_leadPi", "z (leading pions);z;Entries", 100, 0.0, 1.0);
-                                TH1D *hjT = getHist1D("h_jT_leadPi", "jT (leading pions);jT [GeV];Entries", 100, 0.0, 5.0);
-                                hz->Fill(z);
-                                hjT->Fill(jT);
-                                
-                                // Flavor-tagged z and jT for leading pions
-                                if (anc.fromPrimaryQuark && anc.motherQuarkFlavor > 0) {
-                                    std::string qflavor = (anc.motherQuarkFlavor == 1) ? "down" :
-                                                         (anc.motherQuarkFlavor == 2) ? "up" :
-                                                         (anc.motherQuarkFlavor == 3) ? "strange" : "heavy";
-                                    TH1D *hzf = getHist1D("h_z_leadPi_from_"+qflavor,
-                                        ("z (leading #pi from "+qflavor+");z;Entries").c_str(), 100, 0.0, 1.0);
-                                    TH1D *hjTf = getHist1D("h_jT_leadPi_from_"+qflavor,
-                                        ("jT (leading #pi from "+qflavor+");jT [GeV];Entries").c_str(), 100, 0.0, 5.0);
-                                    hzf->Fill(z);
-                                    hjTf->Fill(jT);
-                                    
-                                    // 2D correlation: z vs jT (TMD-like)
-                                    TH2D *h2d = getHist2D("h_z_vs_jT_leadPi_from_"+qflavor,
-                                        ("z vs jT (leading #pi from "+qflavor+");jT [GeV];z").c_str(),
-                                        50, 0.0, 5.0, 50, 0.0, 1.0);
-                                    h2d->Fill(jT, z);
-                                }
+                                TH1D *hz = getHist1D("h_z_leadPi", "z (leading pions);z;Entries", 100, 0.0, 1.0); // create/fill z histogram
+                                TH1D *hjT = getHist1D("h_jT_leadPi", "jT (leading pions);jT [GeV];Entries", 100, 0.0, 5.0); // create/fill jT histogram
+                                hz->Fill(z); // fill z
+                                hjT->Fill(jT); // fill jT
                             }
                             break;
                         }
@@ -666,7 +522,6 @@ int main() {
             if (kaons.size() >= 2) {
                 for (size_t ik = 0; ik < 2; ++ik) {
                     int k_idx = kaons[ik].second;
-                    AncestryInfo anc = traceAncestry(pythia.event, k_idx);
                     
                     double k_px = pythia.event[k_idx].px();
                     double k_py = pythia.event[k_idx].py();
@@ -704,23 +559,6 @@ int main() {
                                 TH1D *hjT = getHist1D("h_jT_leadK", "jT (leading kaons);jT [GeV];Entries", 100, 0.0, 5.0);
                                 hz->Fill(z);
                                 hjT->Fill(jT);
-                                
-                                if (anc.fromPrimaryQuark && anc.motherQuarkFlavor > 0) {
-                                    std::string qflavor = (anc.motherQuarkFlavor == 1) ? "down" :
-                                                         (anc.motherQuarkFlavor == 2) ? "up" :
-                                                         (anc.motherQuarkFlavor == 3) ? "strange" : "heavy";
-                                    TH1D *hzf = getHist1D("h_z_leadK_from_"+qflavor,
-                                        ("z (leading K from "+qflavor+");z;Entries").c_str(), 100, 0.0, 1.0);
-                                    TH1D *hjTf = getHist1D("h_jT_leadK_from_"+qflavor,
-                                        ("jT (leading K from "+qflavor+");jT [GeV];Entries").c_str(), 100, 0.0, 5.0);
-                                    hzf->Fill(z);
-                                    hjTf->Fill(jT);
-                                    
-                                    TH2D *h2d = getHist2D("h_z_vs_jT_leadK_from_"+qflavor,
-                                        ("z vs jT (leading K from "+qflavor+");jT [GeV];z").c_str(),
-                                        50, 0.0, 5.0, 50, 0.0, 1.0);
-                                    h2d->Fill(jT, z);
-                                }
                             }
                             break;
                         }
@@ -729,78 +567,77 @@ int main() {
             }
 
             // Per-jet observables
-            for (const PseudoJet &jet : jets) {
-                double eta = jet.eta();
-                double rapidity = jet.rap();
-                double jetPt = jet.pt();
+            for (const PseudoJet &jet : jets) { // loop over jets
+                double eta = jet.eta(); // jet pseudorapidity
+                double rapidity = jet.rap(); // jet rapidity
+                double jetPt = jet.pt(); // jet transverse momentum
                 
-                h_jetEta->Fill(eta);
-                h_jetRapidity->Fill(rapidity);
-                h_jetPt->Fill(jetPt);
-                h_jetPt_vs_Eta->Fill(eta, jetPt);
+                h_jetEta->Fill(eta); // fill jet eta histogram
+                h_jetRapidity->Fill(rapidity); // fill jet rapidity histogram
+                h_jetPt->Fill(jetPt);// fill jet pT histogram
                 
-                if (flavorID != 0) {
-                    TH1D *heta = getHist1D("h_jetEta_"+flavorName, ("Jet #eta ("+flavorName+");#eta;Entries").c_str(), 100, -5, 5);
-                    TH1D *hrap = getHist1D("h_jetRapidity_"+flavorName, ("Jet rapidity ("+flavorName+");y;Entries").c_str(), 100, -5, 5);
-                    TH1D *hpt = getHist1D("h_jetPt_"+flavorName, ("Jet pT ("+flavorName+");p_{T} [GeV];Entries").c_str(), 100, 0, 50);
-                    heta->Fill(eta);
-                    hrap->Fill(rapidity);
-                    hpt->Fill(jetPt);
+                if (flavorID != 0) { // flavor-tagged jet observables
+                    TH1D *heta = getHist1D("h_jetEta_"+flavorName, ("Jet #eta ("+flavorName+");#eta;Entries").c_str(), 100, -5, 5); // create histogram
+                    TH1D *hrap = getHist1D("h_jetRapidity_"+flavorName, ("Jet rapidity ("+flavorName+");y;Entries").c_str(), 100, -5, 5); // create histogram
+                    TH1D *hpt = getHist1D("h_jetPt_"+flavorName, ("Jet pT ("+flavorName+");p_{T} [GeV];Entries").c_str(), 100, 0, 50); // create histogram
+                    heta->Fill(eta); // fill jet eta
+                    hrap->Fill(rapidity); // fill jet rapidity
+                    hpt->Fill(jetPt); // fill jet pT
                 }
 
-                std::vector<PseudoJet> consts = jet.constituents();
-                int nConst = consts.size();
-                h_jetConstMult->Fill(nConst);
+                std::vector<PseudoJet> consts = jet.constituents(); // get jet constituents
+                int nConst = consts.size(); // number of constituents
+                h_jetConstMult->Fill(nConst); // fill jet constituent multiplicity histogram
                 
-                if (flavorID != 0) {
-                    TH1D *hconst = getHist1D("h_jetConstMult_"+flavorName, ("Jet constituent mult. ("+flavorName+");N_{const};Entries").c_str(), 100, 0, 100);
-                    hconst->Fill(nConst);
+                if (flavorID != 0) { // flavor-tagged jet constituent multiplicity
+                    TH1D *hconst = getHist1D("h_jetConstMult_"+flavorName, ("Jet constituent mult. ("+flavorName+");N_{const};Entries").c_str(), 100, 0, 100); // create histogram
+                    hconst->Fill(nConst); // fill histogram
                 }
 
                 // Per-constituent z and jT (all hadrons)
-                double jpx = jet.px();
-                double jpy = jet.py();
-                double jpz = jet.pz();
-                double jnorm2 = jpx*jpx + jpy*jpy + jpz*jpz;
-                if (jnorm2 <= 0.0) continue;
+                double jpx = jet.px(); // jet x momentum
+                double jpy = jet.py(); // jet y momentum
+                double jpz = jet.pz(); // jet z momentum
+                double jnorm2 = jpx*jpx + jpy*jpy + jpz*jpz; // jet momentum squared
+                if (jnorm2 <= 0.0) continue; // skip if zero momentum
 
-                for (const PseudoJet &c : consts) {
-                    double cpx = c.px();
-                    double cpy = c.py();
-                    double cpz = c.pz();
+                for (const PseudoJet &c : consts) { // loop over constituents
+                    double cpx = c.px(); // constituent x momentum
+                    double cpy = c.py(); // constituent y momentum
+                    double cpz = c.pz(); // constituent z momentum
 
-                    double pdotj = cpx*jpx + cpy*jpy + cpz*jpz;
-                    double zfrag = pdotj / jnorm2;
+                    double pdotj = cpx*jpx + cpy*jpy + cpz*jpz; // dot product
+                    double zfrag = pdotj / jnorm2; // fragmentation variable
 
-                    double px_par = (pdotj / jnorm2) * jpx;
-                    double py_par = (pdotj / jnorm2) * jpy;
-                    double pz_par = (pdotj / jnorm2) * jpz;
-                    double perp_x = cpx - px_par;
-                    double perp_y = cpy - py_par;
-                    double perp_z = cpz - pz_par;
-                    double jT = std::sqrt(perp_x*perp_x + perp_y*perp_y + perp_z*perp_z);
+                    double px_par = (pdotj / jnorm2) * jpx; // parallel component x
+                    double py_par = (pdotj / jnorm2) * jpy;// parallel component y
+                    double pz_par = (pdotj / jnorm2) * jpz; // parallel component z
+                    double perp_x = cpx - px_par; // perpendicular component x
+                    double perp_y = cpy - py_par; // perpendicular component y
+                    double perp_z = cpz - pz_par; // perpendicular component z
+                    double jT = std::sqrt(perp_x*perp_x + perp_y*perp_y + perp_z*perp_z); // transverse momentum rel. to jet
 
-                    TH1D *hz = getHist1D("h_z_all", "z (hadron/jet);z;Entries", 100, 0.0, 1.0);
-                    TH1D *hjT = getHist1D("h_jT_all", "jT (hadron rel. to jet) [GeV];jT [GeV];Entries", 100, 0.0, 5.0);
-                    hz->Fill(zfrag);
-                    hjT->Fill(jT);
+                    TH1D *hz = getHist1D("h_z_all", "z (hadron/jet);z;Entries", 100, 0.0, 1.0); // create/fill z histogram
+                    TH1D *hjT = getHist1D("h_jT_all", "jT (hadron rel. to jet) [GeV];jT [GeV];Entries", 100, 0.0, 5.0); // create/fill jT histogram
+                    hz->Fill(zfrag); // fill z
+                    hjT->Fill(jT); // fill jT
 
-                    if (flavorID != 0) {
-                        std::ostringstream zn, jn;
-                        zn << "h_z_" << flavorName;
-                        jn << "h_jT_" << flavorName;
-                        TH1D *hzf = getHist1D(zn.str(), ("z ("+flavorName+");z;Entries").c_str(), 100, 0.0, 1.0);
-                        TH1D *hjTf = getHist1D(jn.str(), ("jT ("+flavorName+");jT [GeV];Entries").c_str(), 100, 0.0, 5.0);
-                        hzf->Fill(zfrag);
-                        hjTf->Fill(jT);
+                    if (flavorID != 0) { // flavor-tagged z and jT
+                        std::ostringstream zn, jn; // create names
+                        zn << "h_z_" << flavorName; // z histogram name
+                        jn << "h_jT_" << flavorName; // jT histogram name
+                        TH1D *hzf = getHist1D(zn.str(), ("z ("+flavorName+");z;Entries").c_str(), 100, 0.0, 1.0); // create z histogram
+                        TH1D *hjTf = getHist1D(jn.str(), ("jT ("+flavorName+");jT [GeV];Entries").c_str(), 100, 0.0, 5.0); // create jT histogram
+                        hzf->Fill(zfrag); // fill z
+                        hjTf->Fill(jT); // fill jT
                     }
 
-                    int pythia_idx = c.user_index();
-                    if (pythia_idx >= 0 && pythia_idx < pythia.event.size()) {
-                        int pdgid = std::abs(pythia.event[pythia_idx].id());
-                        if (pdgid == 211) {
-                            TH1D *hz_pi = getHist1D("h_z_pi", "z (pions);z;Entries", 100, 0.0, 1.0);
-                            hz_pi->Fill(zfrag);
+                    int pythia_idx = c.user_index(); // get original Pythia index
+                    if (pythia_idx >= 0 && pythia_idx < pythia.event.size()) { // check index validity
+                        int pdgid = std::abs(pythia.event[pythia_idx].id()); // get absolute PDG ID
+                        if (pdgid == 211) { // charged pions
+                            TH1D *hz_pi = getHist1D("h_z_pi", "z (pions);z;Entries", 100, 0.0, 1.0); // create/fill pion z histogram
+                            hz_pi->Fill(zfrag); // fill pion z
                         }
                     }
                 }
@@ -811,7 +648,6 @@ int main() {
 
     std::cout << "\n========== Event Summary ==========\n";
     std::cout << "Total events processed: " << nEvents << "\n";
-    std::cout << "Total hadron pairs: " << totalPairs << "\n";
     std::cout << "Events with primary flavor tag: " << eventsWithTag << "\n";
     std::cout << "Events with >=2 leading pions: " << eventsWithLeadingPions << "\n";
     std::cout << "Events with >=2 leading kaons: " << eventsWithLeadingKaons << "\n";
@@ -828,23 +664,8 @@ int main() {
             delete h;
         }
     };
-    
-    auto writeIfNonEmpty2D = [&](TH2D* h) {
-        if (!h) return;
-        if (h->GetEntries() > 0) {
-            std::cout << "Writing " << h->GetName() << " entries=" << h->GetEntries() << "\n";
-            h->Write();
-        } else {
-            std::cout << "Skipping empty hist " << h->GetName() << "\n";
-            delete h;
-        }
-    };
 
     // Write global histograms
-    writeIfNonEmpty(h_dPhi);
-    writeIfNonEmpty(h_pTimbalance);
-    writeIfNonEmpty(h_OS);
-    writeIfNonEmpty(h_SS);
     writeIfNonEmpty(h_jetMult);
     writeIfNonEmpty(h_jetPt);
     writeIfNonEmpty(h_jetEta);
@@ -859,24 +680,10 @@ int main() {
     writeIfNonEmpty(h_leadPi_deltaPhi);
     writeIfNonEmpty(h_leadK_pT);
     writeIfNonEmpty(h_leadK_deltaPhi);
-    writeIfNonEmpty2D(h_jetPt_vs_Eta);
-    writeIfNonEmpty2D(h_thrust_vs_sphericity);
 
     // Write on-demand histograms
     for (auto &p : hmap) {
         TH1D *h = p.second;
-        if (!h) continue;
-        if (h->GetEntries() > 0) {
-            std::cout << "Writing " << h->GetName() << " entries=" << h->GetEntries() << "\n";
-            h->Write();
-        } else {
-            std::cout << "Skipping empty hist " << h->GetName() << "\n";
-            delete h;
-        }
-    }
-    
-    for (auto &p : hmap2D) {
-        TH2D *h = p.second;
         if (!h) continue;
         if (h->GetEntries() > 0) {
             std::cout << "Writing " << h->GetName() << " entries=" << h->GetEntries() << "\n";
