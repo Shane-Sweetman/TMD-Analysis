@@ -9,6 +9,7 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
+#include <set>
 
 #include "TFile.h"
 #include "TH1D.h"
@@ -25,35 +26,6 @@
 
 using namespace Pythia8;
 using namespace fastjet;
-
-// ---------- get primary hard-process quark flavor ----------
-int getPrimaryQuarkFlavor(const Event &event) {
-    // Return codes: 1=down,2=up,3=strange,4=heavy (c/b),0=unknown
-    int n = event.size();
-    // First pass: status 23 (pythia status code for outgoing hard partons)
-    for (int i = 0; i < n; ++i) { // Loop over all particles in the event.
-        int st = event[i].status(); // Get the status code of particle i
-        int id = std::abs(event[i].id()); // Get the PDG ID (Particle Data Group identifier) of the particle and take absolute value
-        if (st == 23 && id >= 1 && id <= 5) { // Check if the particle is:  A hard-process quark (status 23) or One of the light quarks (u, d, s, c, b)
-            if (id == 1) return 1; // down quark
-            if (id == 2) return 2; // up quark
-            if (id == 3) return 3; // strange quark
-            return 4; // charm or bottom quark
-        }
-    }
-    // Fallback: any particle with PDG 1..5 when no status 23 found
-    for (int i = 0; i < n; ++i) { // Loop over all particles in the event.
-        int id = std::abs(event[i].id()); // Get the PDG ID (Particle Data Group identifier) of the particle and take absolute value
-        if (id >= 1 && id <= 5) { // Check if the particle is one of the light quarks (u, d, s, c, b)
-            if (id == 1) return 1; // down quark
-            if (id == 2) return 2; // up quark
-            if (id == 3) return 3; // strange quark
-            return 4; // charm or bottom quark
-        }
-    }
-    return 0; // Return 0 if nothing found
-}
-
 
 // ---------- Ancestry Tracing ----------
 struct AncestryInfo {
@@ -249,6 +221,10 @@ TH1D* getHist1D(const std::string &name, const std::string &title, // 1D histogr
 }
 
 int main() {
+    
+    
+    
+    
     TFile *fout = new TFile("ee_hadron_corr.root", "RECREATE"); // creates root file
 
     // Jet-based observables
@@ -303,7 +279,6 @@ int main() {
     }
 
     const int nEvents = 20000; // number of events to generate
-    int eventsWithTag = 0; // events with identified primary quark flavor
     int eventsWithLeadingPions = 0; // events with leading pions
     int eventsWithLeadingKaons = 0; // events with leading kaons
 
@@ -314,16 +289,6 @@ int main() {
     // Event loop
     for (int ievt = 0; ievt < nEvents; ++ievt) { // loop over events
         if (!pythia.next()) continue; // generate next event, skip if fails
-
-        int flavorID = getPrimaryQuarkFlavor(pythia.event); // get primary quark flavor
-        std::string flavorName; // flavor name string
-        if (flavorID == 1) flavorName = "down"; 
-        else if (flavorID == 2) flavorName = "up";
-        else if (flavorID == 3) flavorName = "strange";
-        else if (flavorID == 4) flavorName = "heavy";
-        else flavorName = "unknown";
-
-        if (flavorID != 0) ++eventsWithTag; // count events with identified flavor
 
         // Collect final-state charged hadrons
         std::vector<int> hadrons;
@@ -373,7 +338,7 @@ int main() {
             double eta1 = pythia.event[pi1_idx].eta(); // pseudorapidity of first pion
             double eta2 = pythia.event[pi2_idx].eta(); //   pseudorapidity of second pion
             double phi1 = pythia.event[pi1_idx].phi(); // azimuthal angle of first pion
-            double phi2 = pythia.event[pi2_idx].phi(); // azimuthal angle of second pion
+            double phi2 = pythia.event[pi1_idx].phi(); // azimuthal angle of second pion
             
             h_leadPi_pT->Fill(pT1); // fill leading pion pT histogram
             h_leadPi_pT->Fill(pT2); // fill subleading pion pT histogram
@@ -430,10 +395,6 @@ int main() {
             // Jet multiplicity
             int nJets = jets.size(); // number of jets found
             h_jetMult->Fill(nJets); // fill jet multiplicity histogram
-            if (flavorID != 0) { // flavor-tagged jet multiplicity
-                TH1D *hmult = getHist1D("h_jetMult_"+flavorName, ("Jet multiplicity ("+flavorName+");N_{jets};Entries").c_str(), 20, 0, 20); // create histogram
-                hmult->Fill(nJets);// fill histogram
-            }
 
             // Event shapes
             EventShapes shapes = calculateEventShapes(fjInputs); // calculate event shapes
@@ -441,15 +402,6 @@ int main() {
             h_sphericity->Fill(shapes.sphericity); // fill sphericity histogram
             h_circularity->Fill(shapes.circularity); // fill circularity histogram
             
-            if (flavorID != 0) { // flavor-tagged event shapes
-                TH1D *hT = getHist1D("h_thrust_"+flavorName, ("Thrust ("+flavorName+");T;Entries").c_str(), 100, 0, 1); // create histogram
-                TH1D *hS = getHist1D("h_sphericity_"+flavorName, ("Sphericity ("+flavorName+");S;Entries").c_str(), 100, 0, 1); // create histogram
-                TH1D *hC = getHist1D("h_circularity_"+flavorName, ("Circularity ("+flavorName+");C;Entries").c_str(), 100, 0, 1); // create histogram
-                hT->Fill(shapes.thrust); // fill thrust
-                hS->Fill(shapes.sphericity); // fill sphericity 
-                hC->Fill(shapes.circularity); // fill circularity
-            }
-
             // Delta phi between leading jets
             if (jets.size() >= 2) { // at least two jets found
                 double phi1 = jets[0].phi(); // leading jet phi
@@ -458,11 +410,6 @@ int main() {
                 if (dPhi > M_PI)  dPhi -= 2.0*M_PI; // wrap to [-pi, pi]
                 if (dPhi < -M_PI) dPhi += 2.0*M_PI; // wrap to [-pi, pi]
                 h_jetDeltaPhi->Fill(dPhi); // fill delta phi histogram
-                
-                if (flavorID != 0) { // flavor-tagged delta phi
-                    TH1D *hdphi = getHist1D("h_jetDeltaPhi_"+flavorName, ("Jet #Delta#phi ("+flavorName+");#Delta#phi [rad];Entries").c_str(), 64, -3.2, 3.2); // create histogram
-                    hdphi->Fill(dPhi); // fill histogram
-                }
             }
 
             // ========== LEADING HADRON - JET CORRELATION ==========
@@ -575,24 +522,10 @@ int main() {
                 h_jetEta->Fill(eta); // fill jet eta histogram
                 h_jetRapidity->Fill(rapidity); // fill jet rapidity histogram
                 h_jetPt->Fill(jetPt);// fill jet pT histogram
-                
-                if (flavorID != 0) { // flavor-tagged jet observables
-                    TH1D *heta = getHist1D("h_jetEta_"+flavorName, ("Jet #eta ("+flavorName+");#eta;Entries").c_str(), 100, -5, 5); // create histogram
-                    TH1D *hrap = getHist1D("h_jetRapidity_"+flavorName, ("Jet rapidity ("+flavorName+");y;Entries").c_str(), 100, -5, 5); // create histogram
-                    TH1D *hpt = getHist1D("h_jetPt_"+flavorName, ("Jet pT ("+flavorName+");p_{T} [GeV];Entries").c_str(), 100, 0, 50); // create histogram
-                    heta->Fill(eta); // fill jet eta
-                    hrap->Fill(rapidity); // fill jet rapidity
-                    hpt->Fill(jetPt); // fill jet pT
-                }
 
                 std::vector<PseudoJet> consts = jet.constituents(); // get jet constituents
                 int nConst = consts.size(); // number of constituents
                 h_jetConstMult->Fill(nConst); // fill jet constituent multiplicity histogram
-                
-                if (flavorID != 0) { // flavor-tagged jet constituent multiplicity
-                    TH1D *hconst = getHist1D("h_jetConstMult_"+flavorName, ("Jet constituent mult. ("+flavorName+");N_{const};Entries").c_str(), 100, 0, 100); // create histogram
-                    hconst->Fill(nConst); // fill histogram
-                }
 
                 // Per-constituent z and jT (all hadrons)
                 double jpx = jet.px(); // jet x momentum
@@ -622,16 +555,6 @@ int main() {
                     hz->Fill(zfrag); // fill z
                     hjT->Fill(jT); // fill jT
 
-                    if (flavorID != 0) { // flavor-tagged z and jT
-                        std::ostringstream zn, jn; // create names
-                        zn << "h_z_" << flavorName; // z histogram name
-                        jn << "h_jT_" << flavorName; // jT histogram name
-                        TH1D *hzf = getHist1D(zn.str(), ("z ("+flavorName+");z;Entries").c_str(), 100, 0.0, 1.0); // create z histogram
-                        TH1D *hjTf = getHist1D(jn.str(), ("jT ("+flavorName+");jT [GeV];Entries").c_str(), 100, 0.0, 5.0); // create jT histogram
-                        hzf->Fill(zfrag); // fill z
-                        hjTf->Fill(jT); // fill jT
-                    }
-
                     int pythia_idx = c.user_index(); // get original Pythia index
                     if (pythia_idx >= 0 && pythia_idx < pythia.event.size()) { // check index validity
                         int pdgid = std::abs(pythia.event[pythia_idx].id()); // get absolute PDG ID
@@ -648,7 +571,6 @@ int main() {
 
     std::cout << "\n========== Event Summary ==========\n";
     std::cout << "Total events processed: " << nEvents << "\n";
-    std::cout << "Events with primary flavor tag: " << eventsWithTag << "\n";
     std::cout << "Events with >=2 leading pions: " << eventsWithLeadingPions << "\n";
     std::cout << "Events with >=2 leading kaons: " << eventsWithLeadingKaons << "\n";
     std::cout << "===================================\n\n";
