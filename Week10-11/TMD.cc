@@ -1,18 +1,15 @@
-// TMD.cc - Dual Method First Pion Analysis (v4c, fixed)
+// TMD.cc - Combined Pion 4-Vector Analysis
 // e+ e- -> Z -> qqbar
-// Compare two "first pion" definitions inside each jet:
-//   A) Fewest steps to a quark in ancestry ("Fewest steps")
-//   B) Highest transverse momentum pT ("Highest momentum")
-// This version:
-//  - uses visible (charged+neutral) inputs and anti-kt for jets
-//  - KEEPS ONLY FOUR HISTOGRAMS:
+// Find the charged pion closest to original quark in each jet
+// Add their 4-vectors and calculate pT of the combined system
 //
-//    1) First charged pion pT vs highest pT charged pion in jet 0 (0/1 agreement)
-//    2) First charged pion pT vs highest pT charged pion in jet 1 (0/1 agreement)
-//    3) ΔpT (first charged pion): pT(jet0) - pT(jet1)
-//    4) Δφ between first charged pion in each jet
-//
-//  - interactive event browser is kept
+// Compile with:
+// g++ -std=c++17 \
+//   -I /Users/shanesweetman/downloads/pythia/pythia8315/include \
+//   $(root-config --cflags) $("$FJ/bin/fastjet-config" --cxxflags) \
+//   TMD.cc -o TMD \
+//   -L /Users/shanesweetman/downloads/pythia/pythia8315/lib -lpythia8 \
+//   $(root-config --libs) $("$FJ/bin/fastjet-config" --libs) -lMatrix
 
 #include <iostream>
 #include <vector>
@@ -24,7 +21,6 @@
 
 #include "TFile.h"
 #include "TH1D.h"
-#include "TH1I.h"
 
 // Pythia
 #include "Pythia8/Pythia.h"
@@ -44,8 +40,8 @@ static inline double wrapToPi(double x) {
 
 // ---------- Ancestry Tracing ----------
 struct AncestryResult {
-    int steps;           // pion->mother is 1, ..., mother->quark = N
-    int quarkFlavor;     // PDG of quark (1-5)
+    int steps;
+    int quarkFlavor;
     bool foundQuark;
 };
 
@@ -70,12 +66,12 @@ AncestryResult countStepsToQuark(const Event& event, int pion_idx) {
             break;
         }
 
-        if (result.steps > 200) break; // safety
+        if (result.steps > 200) break;
     }
     return result;
 }
 
-// ---------- Event Shape: Thrust (coarse scan; quality cut only) ----------
+// ---------- Event Shape: Thrust ----------
 double calculateThrust(const std::vector<fastjet::PseudoJet> &particles) {
     if (particles.empty()) return 0.0;
     double totalP = 0.0;
@@ -105,7 +101,15 @@ double calculateThrust(const std::vector<fastjet::PseudoJet> &particles) {
     return maxThrust;
 }
 
-// ---------- Interactive Event Table (optional) ----------
+// ---------- Pion Info ----------
+struct PionInfo {
+    int idx;
+    double pT;
+    int steps;
+    int charge;
+};
+
+// ---------- Interactive Event Table ----------
 static void printEventTableWide(const Pythia8::Event& ev, int ievt,
                                 int startRow, int rowsPerPage) {
     using std::cout; using std::left; using std::right; using std::setw; using std::setprecision; using std::fixed;
@@ -214,14 +218,6 @@ char promptPager(const char* msg = "More") {
     return 'c';
 }
 
-// ---------- Pion Info ----------
-struct PionInfo {
-    int idx;     // event row index (pythia.event index)
-    double pT;
-    int steps;
-    int charge;
-};
-
 int main(int argc, char* argv[]) {
     bool INTERACTIVE_MODE = false;
     for (int i = 1; i < argc; ++i) {
@@ -234,43 +230,21 @@ int main(int argc, char* argv[]) {
 
     TFile *fout = new TFile("week10.root", "RECREATE");
 
-    // ========== HISTOGRAMS (ONLY 4 KEPT) ==========
-    TH1I *h_samePion_jet0 = new TH1I(
-        "h_samePion_jet0",
-        "First charged pion p_{T} vs highest p_{T} charged pion in jet 0;class;Jets",
-        2, -0.5, 1.5
+    // Two histograms: pT of combined pion system
+    TH1D *h_combined_pT_closestToQuark = new TH1D(
+        "h_combined_pT_closestToQuark",
+        "p_{T} of combined pion system (closest to quark);p_{T} [GeV];Events",
+        100, 0, 50
     );
-
-    TH1I *h_samePion_jet1 = new TH1I(
-        "h_samePion_jet1",
-        "First charged pion p_{T} vs highest p_{T} charged pion in jet 1;class;Jets",
-        2, -0.5, 1.5
+    
+    TH1D *h_combined_pT_highestMomentum = new TH1D(
+        "h_combined_pT_highestMomentum",
+        "p_{T} of combined pion system (highest momentum);p_{T} [GeV];Events",
+        100, 0, 50
     );
-
-    TH1D *h_fewestSteps_firstPi_pT_signed_difference =
-        new TH1D("h_fewestSteps_firstPi_pT_signed_difference",
-                 "#Delta p_{T} (first charged pion): p_{T,jet0} - p_{T,jet1};#Delta p_{T} [GeV];Events",
-                 100, -30, 30);
-
-    TH1D *h_fewestSteps_firstPi_deltaPhi =
-        new TH1D("h_fewestSteps_firstPi_deltaPhi",
-                 "#Delta#phi between first charged pion in each jet;#Delta#phi [rad];Entries",
-                 128, -M_PI, M_PI);
-
-    // Label x-axis bins for the 0/1 agreement histograms
-    for (TH1* h : std::vector<TH1*>{h_samePion_jet0, h_samePion_jet1}) {
-        h->GetXaxis()->SetBinLabel(1, "0 (different)");
-        h->GetXaxis()->SetBinLabel(2, "1 (same)");
-    }
-
-    // Detach from current directory
-    for (TH1* h : std::vector<TH1*>{
-            h_samePion_jet0,
-            h_samePion_jet1,
-            h_fewestSteps_firstPi_pT_signed_difference,
-            h_fewestSteps_firstPi_deltaPhi }) {
-        if (h) h->SetDirectory(nullptr);
-    }
+    
+    h_combined_pT_closestToQuark->SetDirectory(nullptr);
+    h_combined_pT_highestMomentum->SetDirectory(nullptr);
 
     // ========== PYTHIA ==========
     Pythia pythia;
@@ -293,7 +267,7 @@ int main(int argc, char* argv[]) {
     const double jetPtMin = 5.0;
 
     int nEventsProcessed = 0, nEvents2Jets = 0, nEventsBackToBack = 0;
-    int nEventsWithPions = 0, nEventsMethodsAgree = 0;
+    int nEventsWithPions = 0;
 
     bool quitAll = false;
 
@@ -327,7 +301,7 @@ int main(int argc, char* argv[]) {
         if (!INTERACTIVE_MODE && (ievt + 1) % 1000 == 0)
             std::cout << "Processed " << (ievt + 1) << " events...\n";
 
-        // visible final-state
+        // Visible final-state particles
         std::vector<int> finals;
         finals.reserve(128);
         for (int i = 0; i < pythia.event.size(); ++i) {
@@ -361,16 +335,17 @@ int main(int argc, char* argv[]) {
         PseudoJet jet0 = jets[0], jet1 = jets[1];
 
         double dphi_jets = wrapToPi(jet0.phi() - jet1.phi());
-        if (std::fabs(dphi_jets) < 2.8) continue; // ~160 degrees
+        if (std::fabs(dphi_jets) < 2.8) continue;
         nEventsBackToBack++;
 
+        // Collect charged pions in each jet
         auto collectPions = [&](const PseudoJet& j)->std::vector<PionInfo> {
             std::vector<PionInfo> out;
             for (const PseudoJet &c : j.constituents()) {
                 int idx = c.user_index();
                 if (idx < 0 || idx >= pythia.event.size()) continue;
                 int pdg = pythia.event[idx].id();
-                if (std::abs(pdg) != 211) continue; // charged pion only
+                if (std::abs(pdg) != 211) continue;
                 PionInfo info;
                 info.idx    = idx;
                 info.pT     = pythia.event[idx].pT();
@@ -387,41 +362,60 @@ int main(int argc, char* argv[]) {
         if (pions_jet0.empty() || pions_jet1.empty()) continue;
         nEventsWithPions++;
 
-        auto by_pT_desc   = [](const PionInfo& a, const PionInfo& b){ return a.pT > b.pT; };
-        auto by_steps_asc = [](const PionInfo& a, const PionInfo& b){ return a.steps < b.steps; };
-
-        auto pj0_pt = pions_jet0; std::sort(pj0_pt.begin(), pj0_pt.end(), by_pT_desc);
-        auto pj1_pt = pions_jet1; std::sort(pj1_pt.begin(), pj1_pt.end(), by_pT_desc);
-        int idx_high0 = pj0_pt[0].idx;
-        int idx_high1 = pj1_pt[0].idx;
-
-        auto pj0_st = pions_jet0; std::sort(pj0_st.begin(), pj0_st.end(), by_steps_asc);
-        auto pj1_st = pions_jet1; std::sort(pj1_st.begin(), pj1_st.end(), by_steps_asc);
-        int idx_step0 = pj0_st[0].idx;
-        int idx_step1 = pj1_st[0].idx;
-
-        bool same0 = (idx_high0 == idx_step0);
-        bool same1 = (idx_high1 == idx_step1);
-        bool both  = (same0 && same1);
-
-        h_samePion_jet0->Fill(same0 ? 1 : 0);
-        h_samePion_jet1->Fill(same1 ? 1 : 0);
-
-        if (both) nEventsMethodsAgree++;
-
-        auto dphiSigned = [&](int idxA, int idxB)->double{
-            return wrapToPi(pythia.event[idxA].phi() - pythia.event[idxB].phi());
+        // Sort by steps (fewest steps = closest to quark)
+        auto by_steps_asc = [](const PionInfo& a, const PionInfo& b){ 
+            return a.steps < b.steps; 
         };
 
+        auto pj0_steps = pions_jet0; 
+        std::sort(pj0_steps.begin(), pj0_steps.end(), by_steps_asc);
+        int idx_closest0 = pj0_steps[0].idx;
+
+        auto pj1_steps = pions_jet1; 
+        std::sort(pj1_steps.begin(), pj1_steps.end(), by_steps_asc);
+        int idx_closest1 = pj1_steps[0].idx;
+
+        // Sort by pT (highest momentum)
+        auto by_pT_desc = [](const PionInfo& a, const PionInfo& b){ 
+            return a.pT > b.pT; 
+        };
+
+        auto pj0_pT = pions_jet0; 
+        std::sort(pj0_pT.begin(), pj0_pT.end(), by_pT_desc);
+        int idx_highest0 = pj0_pT[0].idx;
+
+        auto pj1_pT = pions_jet1; 
+        std::sort(pj1_pT.begin(), pj1_pT.end(), by_pT_desc);
+        int idx_highest1 = pj1_pT[0].idx;
+
+        // Calculate combined pT for "closest to quark" pions
         {
-            double pT0 = pythia.event[idx_step0].pT();
-            double pT1 = pythia.event[idx_step1].pT();
+            const Particle& pion0 = pythia.event[idx_closest0];
+            const Particle& pion1 = pythia.event[idx_closest1];
 
-            h_fewestSteps_firstPi_pT_signed_difference->Fill(pT0 - pT1);
+            double E_sum  = pion0.e()  + pion1.e();
+            double px_sum = pion0.px() + pion1.px();
+            double py_sum = pion0.py() + pion1.py();
+            double pz_sum = pion0.pz() + pion1.pz();
 
-            double dphi_pi = dphiSigned(idx_step0, idx_step1);
-            h_fewestSteps_firstPi_deltaPhi->Fill(dphi_pi);
+            double pT_combined = std::sqrt(px_sum*px_sum + py_sum*py_sum);
+            h_combined_pT_closestToQuark->Fill(pT_combined);
         }
+
+        // Calculate combined pT for "highest momentum" pions
+        {
+            const Particle& pion0 = pythia.event[idx_highest0];
+            const Particle& pion1 = pythia.event[idx_highest1];
+
+            double E_sum  = pion0.e()  + pion1.e();
+            double px_sum = pion0.px() + pion1.px();
+            double py_sum = pion0.py() + pion1.py();
+            double pz_sum = pion0.pz() + pion1.pz();
+
+            double pT_combined = std::sqrt(px_sum*px_sum + py_sum*py_sum);
+            h_combined_pT_highestMomentum->Fill(pT_combined);
+        }
+
     } // end event loop
 
     std::cout << "\n========================================\n";
@@ -431,26 +425,17 @@ int main(int argc, char* argv[]) {
     std::cout << "Events with exactly 2 jets:    " << nEvents2Jets << "\n";
     std::cout << "Events back-to-back (>160°):   " << nEventsBackToBack << "\n";
     std::cout << "Events with pions in both jets:" << nEventsWithPions << "\n";
-    std::cout << "Events where both jets agree:  " << nEventsMethodsAgree << "\n";
-    if (nEventsWithPions > 0) {
-        double frac = 100.0 * nEventsMethodsAgree / nEventsWithPions;
-        std::cout << "Agreement fraction (both jets): "
-                  << std::fixed << std::setprecision(1) << frac << "%\n";
-    }
     std::cout << "========================================\n\n";
 
     std::cout << "Writing histograms to file...\n";
-    auto writeH = [&](TH1* h){
-        if (h && h->GetEntries()>0) {
-            h->Write();
-            std::cout << "  wrote: " << h->GetName() << "\n";
-        }
-    };
-
-    writeH(h_samePion_jet0);
-    writeH(h_samePion_jet1);
-    writeH(h_fewestSteps_firstPi_pT_signed_difference);
-    writeH(h_fewestSteps_firstPi_deltaPhi);
+    if (h_combined_pT_closestToQuark && h_combined_pT_closestToQuark->GetEntries() > 0) {
+        h_combined_pT_closestToQuark->Write();
+        std::cout << "  wrote: " << h_combined_pT_closestToQuark->GetName() << "\n";
+    }
+    if (h_combined_pT_highestMomentum && h_combined_pT_highestMomentum->GetEntries() > 0) {
+        h_combined_pT_highestMomentum->Write();
+        std::cout << "  wrote: " << h_combined_pT_highestMomentum->GetName() << "\n";
+    }
 
     fout->Close();
     std::cout << "\nOutput written to: week10.root\n";

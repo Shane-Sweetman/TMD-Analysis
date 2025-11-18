@@ -10,7 +10,7 @@
 //    1) First charged pion pT vs highest pT charged pion in jet 0 (0/1 agreement)
 //    2) First charged pion pT vs highest pT charged pion in jet 1 (0/1 agreement)
 //    3) ΔpT (first charged pion): pT(jet0) - pT(jet1)
-//    4) Fewest-steps: signed Δφ(π0 - π1)
+//    4) Δφ between first charged pion in each jet
 //
 //  - interactive event browser is kept
 
@@ -249,12 +249,12 @@ int main(int argc, char* argv[]) {
 
     TH1D *h_fewestSteps_firstPi_pT_signed_difference =
         new TH1D("h_fewestSteps_firstPi_pT_signed_difference",
-                 "#Delta p_{T} (first charged #pi): p_{T,jet0} - p_{T,jet1};#Delta p_{T} [GeV];Events",
+                 "#Delta p_{T} (first charged pion): p_{T,jet0} - p_{T,jet1};#Delta p_{T} [GeV];Events",
                  100, -30, 30);
 
     TH1D *h_fewestSteps_firstPi_deltaPhi =
         new TH1D("h_fewestSteps_firstPi_deltaPhi",
-                 "Fewest-steps: signed #Delta#phi(#pi_{0} - #pi_{1});#Delta#phi [rad];Entries",
+                 "#Delta#phi between first charged pion in each jet;#Delta#phi [rad];Entries",
                  128, -M_PI, M_PI);
 
     // Label x-axis bins for the 0/1 agreement histograms
@@ -370,7 +370,7 @@ int main(int argc, char* argv[]) {
                 int idx = c.user_index();
                 if (idx < 0 || idx >= pythia.event.size()) continue;
                 int pdg = pythia.event[idx].id();
-                if (std::abs(pdg) != 211) continue; // π± only
+                if (std::abs(pdg) != 211) continue; // charged pion only
                 PionInfo info;
                 info.idx    = idx;
                 info.pT     = pythia.event[idx].pT();
