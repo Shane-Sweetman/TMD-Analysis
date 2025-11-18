@@ -139,6 +139,42 @@ struct PionInfo {
     int charge;
 };
 
+// ---------- Charged Hadron Info ----------
+struct ChargedHadronInfo {
+    int idx;
+    int pdg;
+    int steps;
+    int quarkIndex;  // which Z quark it traces to
+};
+
+// Collect all charged hadrons and trace to Z quarks
+std::vector<ChargedHadronInfo> collectChargedHadrons(const Event& event, int zQuark1, int zQuark2) {
+    std::vector<ChargedHadronInfo> hadrons;
+    
+    for (int i = 0; i < event.size(); ++i) {
+        if (!event[i].isFinal()) continue;
+        if (!event[i].isCharged()) continue;
+        
+        int pdg = event[i].id();
+        // Check if it's a hadron (not lepton or photon)
+        int absPdg = std::abs(pdg);
+        if (absPdg == 11 || absPdg == 13 || absPdg == 15) continue; // leptons
+        if (absPdg == 22) continue; // photon
+        
+        AncestryResult anc = countStepsToQuark(event, i, zQuark1, zQuark2);
+        if (!anc.foundQuark) continue;
+        
+        ChargedHadronInfo info;
+        info.idx = i;
+        info.pdg = pdg;
+        info.steps = anc.steps;
+        info.quarkIndex = anc.quarkIndex;
+        hadrons.push_back(info);
+    }
+    
+    return hadrons;
+}
+
 // ---------- Interactive Event Table ----------
 static void printEventTableWide(const Pythia8::Event& ev, int ievt,
                                 int startRow, int rowsPerPage) {
@@ -273,8 +309,21 @@ int main(int argc, char* argv[]) {
         100, 0, 50
     );
     
+    // Histogram: Was the first charged hadron a charged pion?
+    TH1I *h_firstHadron_isPion = new TH1I(
+        "h_firstHadron_isPion",
+        "First charged hadron from Z quark is a charged pion;0=Neither, 1=One quark, 2=Both quarks;Events",
+        3, -0.5, 2.5
+    );
+    
     h_combined_pT_closestToQuark->SetDirectory(nullptr);
     h_combined_pT_highestMomentum->SetDirectory(nullptr);
+    h_firstHadron_isPion->SetDirectory(nullptr);
+    
+    // Label bins for the pion histogram
+    h_firstHadron_isPion->GetXaxis()->SetBinLabel(1, "0 (neither)");
+    h_firstHadron_isPion->GetXaxis()->SetBinLabel(2, "1 (one quark)");
+    h_firstHadron_isPion->GetXaxis()->SetBinLabel(3, "2 (both quarks)");
 
     // ========== PYTHIA ==========
     Pythia pythia;
@@ -336,6 +385,56 @@ int main(int argc, char* argv[]) {
         int zQuark1 = zQuarks.first;
         int zQuark2 = zQuarks.second;
         if (zQuark1 < 0 || zQuark2 < 0) continue;  // Skip if Z quarks not found
+
+        // Check if first charged hadron from each Z quark is a pion
+        std::vector<ChargedHadronInfo> allChargedHadrons = collectChargedHadrons(pythia.event, zQuark1, zQuark2);
+        
+        if (!allChargedHadrons.empty()) {
+            // Separate hadrons by which quark they trace to
+            std::vector<ChargedHadronInfo> hadrons_q1, hadrons_q2;
+            for (const auto& h : allChargedHadrons) {
+                if (h.quarkIndex == zQuark1) hadrons_q1.push_back(h);
+                else if (h.quarkIndex == zQuark2) hadrons_q2.push_back(h);
+            }
+            
+            int pionCount = 0;
+            
+            // Check quark 1
+            if (!hadrons_q1.empty()) {
+                // Find minimum steps
+                int minSteps = hadrons_q1[0].steps;
+                for (const auto& h : hadrons_q1) {
+                    if (h.steps < minSteps) minSteps = h.steps;
+                }
+                
+                // Check if any hadron with minimum steps is a charged pion
+                for (const auto& h : hadrons_q1) {
+                    if (h.steps == minSteps && std::abs(h.pdg) == 211) {
+                        pionCount++;
+                        break;
+                    }
+                }
+            }
+            
+            // Check quark 2
+            if (!hadrons_q2.empty()) {
+                // Find minimum steps
+                int minSteps = hadrons_q2[0].steps;
+                for (const auto& h : hadrons_q2) {
+                    if (h.steps < minSteps) minSteps = h.steps;
+                }
+                
+                // Check if any hadron with minimum steps is a charged pion
+                for (const auto& h : hadrons_q2) {
+                    if (h.steps == minSteps && std::abs(h.pdg) == 211) {
+                        pionCount++;
+                        break;
+                    }
+                }
+            }
+            
+            h_firstHadron_isPion->Fill(pionCount);
+        }
 
         // visible final-state particles
         std::vector<int> finals;
@@ -472,6 +571,10 @@ int main(int argc, char* argv[]) {
     if (h_combined_pT_highestMomentum && h_combined_pT_highestMomentum->GetEntries() > 0) {
         h_combined_pT_highestMomentum->Write();
         std::cout << "  wrote: " << h_combined_pT_highestMomentum->GetName() << "\n";
+    }
+    if (h_firstHadron_isPion && h_firstHadron_isPion->GetEntries() > 0) {
+        h_firstHadron_isPion->Write();
+        std::cout << "  wrote: " << h_firstHadron_isPion->GetName() << "\n";
     }
 
     fout->Close();
