@@ -39,14 +39,43 @@ static inline double wrapToPi(double x) {
 }
 
 // ---------- Ancestry Tracing ----------
+
+// Find the two primary quarks from Z decay
+std::pair<int, int> findZdecayQuarks(const Event& event) {
+    int quark1 = -1, quark2 = -1;
+    
+    // Find the Z boson
+    for (int i = 0; i < event.size(); ++i) {
+        if (event[i].id() == 23) {  // Z boson PDG code
+            int d1 = event[i].daughter1();
+            int d2 = event[i].daughter2();
+            
+            if (d1 > 0 && d1 < event.size() && d2 > 0 && d2 < event.size()) {
+                int pdg1 = std::abs(event[d1].id());
+                int pdg2 = std::abs(event[d2].id());
+                
+                // Check if both daughters are quarks (PDG 1-5)
+                if (pdg1 >= 1 && pdg1 <= 5 && pdg2 >= 1 && pdg2 <= 5) {
+                    quark1 = d1;
+                    quark2 = d2;
+                    break;
+                }
+            }
+        }
+    }
+    
+    return std::make_pair(quark1, quark2);
+}
+
 struct AncestryResult {
     int steps;
     int quarkFlavor;
     bool foundQuark;
+    int quarkIndex;  // index of the quark found
 };
 
-AncestryResult countStepsToQuark(const Event& event, int pion_idx) {
-    AncestryResult result = {0, 0, false};
+AncestryResult countStepsToQuark(const Event& event, int pion_idx, int targetQuark1, int targetQuark2) {
+    AncestryResult result = {0, 0, false, -1};
     int current = pion_idx;
     std::set<int> visited;
 
@@ -59,14 +88,15 @@ AncestryResult countStepsToQuark(const Event& event, int pion_idx) {
         result.steps++;
         current = mother;
 
-        int pdg = std::abs(event[current].id());
-        if (pdg >= 1 && pdg <= 5) {
-            result.quarkFlavor = pdg;
+        // Check if we've reached one of the Z decay quarks
+        if (current == targetQuark1 || current == targetQuark2) {
+            result.quarkFlavor = std::abs(event[current].id());
             result.foundQuark = true;
+            result.quarkIndex = current;
             break;
         }
 
-        if (result.steps > 200) break;
+        if (result.steps > 200) break; // safety
     }
     return result;
 }
@@ -301,7 +331,13 @@ int main(int argc, char* argv[]) {
         if (!INTERACTIVE_MODE && (ievt + 1) % 1000 == 0)
             std::cout << "Processed " << (ievt + 1) << " events...\n";
 
-        // Visible final-state particles
+        // Find the two primary quarks from Z decay
+        std::pair<int, int> zQuarks = findZdecayQuarks(pythia.event);
+        int zQuark1 = zQuarks.first;
+        int zQuark2 = zQuarks.second;
+        if (zQuark1 < 0 || zQuark2 < 0) continue;  // Skip if Z quarks not found
+
+        // visible final-state particles
         std::vector<int> finals;
         finals.reserve(128);
         for (int i = 0; i < pythia.event.size(); ++i) {
@@ -345,12 +381,13 @@ int main(int argc, char* argv[]) {
                 int idx = c.user_index();
                 if (idx < 0 || idx >= pythia.event.size()) continue;
                 int pdg = pythia.event[idx].id();
-                if (std::abs(pdg) != 211) continue;
+                if (std::abs(pdg) != 211) continue; // charged pion only
                 PionInfo info;
                 info.idx    = idx;
                 info.pT     = pythia.event[idx].pT();
                 info.charge = (pdg > 0) ? 1 : -1;
-                AncestryResult anc = countStepsToQuark(pythia.event, idx);
+                AncestryResult anc = countStepsToQuark(pythia.event, idx, zQuark1, zQuark2);
+                if (!anc.foundQuark) continue;  // Skip if doesn't trace to Z quarks
                 info.steps  = anc.steps;
                 out.push_back(info);
             }
