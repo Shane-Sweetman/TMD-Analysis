@@ -21,6 +21,24 @@ Open the output ROOT file:
 make open
 ```
 
+## VS Code
+
+Open the repository in VS Code:
+
+```bash
+code .
+```
+
+Then run:
+
+```text
+Terminal > Run Task... > TMD: Print Config
+Terminal > Run Task... > TMD: Smoke Test (10k events)
+Terminal > Run Task... > TMD: Open ROOT Browser
+```
+
+If your dependency paths differ, edit `.vscode/settings.json`.
+
 Run a larger sample by overriding variables:
 
 ```bash

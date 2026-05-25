@@ -1,0 +1,127 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "TMD: Print Config",
+      "type": "shell",
+      "command": "make",
+      "args": [
+        "print-config",
+        "PYTHIA=${config:tmdAnalysis.pythiaPath}",
+        "FJ=${config:tmdAnalysis.fastJetPath}"
+      ],
+      "group": "none",
+      "problemMatcher": []
+    },
+    {
+      "label": "TMD: Build",
+      "type": "shell",
+      "command": "make",
+      "args": [
+        "build",
+        "PYTHIA=${config:tmdAnalysis.pythiaPath}",
+        "FJ=${config:tmdAnalysis.fastJetPath}"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "TMD: Smoke Test (10k events)",
+      "type": "shell",
+      "command": "make",
+      "args": [
+        "test",
+        "PYTHIA=${config:tmdAnalysis.pythiaPath}",
+        "FJ=${config:tmdAnalysis.fastJetPath}"
+      ],
+      "group": "test",
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "TMD: Run Custom Event Sample",
+      "type": "shell",
+      "command": "make",
+      "args": [
+        "run",
+        "PYTHIA=${config:tmdAnalysis.pythiaPath}",
+        "FJ=${config:tmdAnalysis.fastJetPath}",
+        "EVENTS=${input:events}",
+        "SEED=${input:seed}",
+        "OUT=${input:outputFile}",
+        "PROGRESS=${input:progressFile}"
+      ],
+      "group": "test",
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "TMD: Open ROOT Browser",
+      "type": "shell",
+      "command": "make",
+      "args": [
+        "open",
+        "OUT=${input:openFile}"
+      ],
+      "group": "none",
+      "problemMatcher": []
+    },
+    {
+      "label": "TMD: Clean",
+      "type": "shell",
+      "command": "make",
+      "args": [
+        "clean",
+        "OUT=${input:cleanOutput}",
+        "PROGRESS=${input:cleanProgress}"
+      ],
+      "group": "none",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "events",
+      "type": "promptString",
+      "description": "Number of PYTHIA events",
+      "default": "${config:tmdAnalysis.defaultEvents}"
+    },
+    {
+      "id": "seed",
+      "type": "promptString",
+      "description": "PYTHIA random seed",
+      "default": "${config:tmdAnalysis.defaultSeed}"
+    },
+    {
+      "id": "outputFile",
+      "type": "promptString",
+      "description": "ROOT output file",
+      "default": "${config:tmdAnalysis.defaultOutput}"
+    },
+    {
+      "id": "progressFile",
+      "type": "promptString",
+      "description": "Progress text file",
+      "default": "progress.txt"
+    },
+    {
+      "id": "openFile",
+      "type": "promptString",
+      "description": "ROOT file to open",
+      "default": "${config:tmdAnalysis.defaultOutput}"
+    },
+    {
+      "id": "cleanOutput",
+      "type": "promptString",
+      "description": "Output file to remove",
+      "default": "${config:tmdAnalysis.defaultOutput}"
+    },
+    {
+      "id": "cleanProgress",
+      "type": "promptString",
+      "description": "Progress file to remove",
+      "default": "progress.txt"
+    }
+  ]
+}

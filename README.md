@@ -42,6 +42,7 @@ TMD-Analysis/
 ├── README.md
 ├── doc/assets/                  # README banner image
 ├── docs/                        # Physics and workflow notes
+├── .vscode/                     # VS Code tasks for build/run/test
 ├── scripts/                     # Bash-first compile/run helpers
 ├── src/pythia/                  # Main PYTHIA analysis source
 ├── tools/plotting/              # ROOT/Python plotting and summary scripts
@@ -79,6 +80,15 @@ From the repository root:
 make test
 make open
 ```
+
+In VS Code, open the repository and use:
+
+```text
+Terminal > Run Task... > TMD: Smoke Test (10k events)
+Terminal > Run Task... > TMD: Open ROOT Browser
+```
+
+Local dependency paths for VS Code tasks are stored in `.vscode/settings.json`. See [docs/vscode.md](docs/vscode.md).
 
 The default run is intentionally small. Thesis-scale runs used much larger samples, up to 100M events, and produced large ROOT files that are not suitable for GitHub.
 
