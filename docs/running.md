@@ -1,6 +1,6 @@
 # Running the Analysis
 
-This project used explicit bash commands with local dependency paths. It did not mainly use Makefile or CMake.
+The original thesis workflow used explicit local compile/run commands. This public version provides a small root-level `Makefile` so the analysis can be built and smoke-tested with simple terminal commands.
 
 Set the local dependency paths:
 
@@ -12,18 +12,34 @@ export FJ=/Users/shanesweetman/Downloads/fastjet
 Run a small PYTHIA test:
 
 ```bash
-chmod +x scripts/run_pythia_example.sh
-EVENTS=10000 SEED=12345 scripts/run_pythia_example.sh
+make test
 ```
 
 Open the output ROOT file:
 
 ```bash
-chmod +x scripts/open_root_browser.sh
-scripts/open_root_browser.sh output.root
+make open
 ```
 
-The script compiles:
+Run a larger sample by overriding variables:
+
+```bash
+make run EVENTS=100000 SEED=12345 OUT=output.root
+```
+
+Use non-default dependency paths:
+
+```bash
+make test PYTHIA=/path/to/pythia8315 FJ=/path/to/fastjet
+```
+
+Inspect the active configuration:
+
+```bash
+make print-config
+```
+
+The Makefile compiles with the same command structure used during the thesis work:
 
 ```bash
 g++ -O2 -std=c++17 \
@@ -37,7 +53,7 @@ g++ -O2 -std=c++17 \
   -Wl,-rpath,"$PYTHIA/lib" -Wl,-rpath,"$FJ/lib"
 ```
 
-and runs:
+and runs the executable as:
 
 ```bash
 env DYLD_LIBRARY_PATH="$PYTHIA/lib:$FJ/lib" \

@@ -55,7 +55,7 @@ The presentation source-code map is kept under `presentations/_source-code-map/`
 
 ## Dependencies
 
-The analysis was run with explicit local shell commands rather than a Makefile or CMake workflow. Paths must be edited for a local machine.
+The original thesis workflow used explicit local compile/run commands. This public version provides a small root-level `Makefile` so the code can be tested with a standard command-line interface. It is a convenience wrapper around the ROOT/PYTHIA/FastJet command, not a CMake project.
 
 Required for the PYTHIA analysis:
 
@@ -76,9 +76,8 @@ export FJ=/Users/shanesweetman/Downloads/fastjet
 From the repository root:
 
 ```bash
-chmod +x scripts/run_pythia_example.sh scripts/open_root_browser.sh
-EVENTS=10000 SEED=12345 scripts/run_pythia_example.sh
-scripts/open_root_browser.sh output.root
+make test
+make open
 ```
 
 The default run is intentionally small. Thesis-scale runs used much larger samples, up to 100M events, and produced large ROOT files that are not suitable for GitHub.
@@ -98,7 +97,18 @@ PYTHIA=/path/to/pythia8315 \
 FJ=/path/to/fastjet \
 EVENTS=10000 \
 SEED=12345 \
-scripts/run_pythia_example.sh
+make run
+```
+
+Useful targets:
+
+```bash
+make help
+make print-config
+make build
+make test
+make run EVENTS=100000 SEED=12345 OUT=output.root
+make clean
 ```
 
 For more practical commands, see [docs/running.md](docs/running.md).
@@ -106,13 +116,7 @@ For more practical commands, see [docs/running.md](docs/running.md).
 ## Opening ROOT Output Files
 
 ```bash
-scripts/open_root_browser.sh output.root
-```
-
-or directly:
-
-```bash
-root -l -e 'TFile::Open("output.root"); new TBrowser();'
+make open OUT=output.root
 ```
 
 ## Results Summary

@@ -14,7 +14,7 @@ The main omitted files include:
 To regenerate a small test output, run:
 
 ```bash
-EVENTS=10000 SEED=12345 scripts/run_pythia_example.sh
+make test
 ```
 
 Thesis-scale numerical results used much larger event samples and should be stored externally if they need to be preserved exactly.
