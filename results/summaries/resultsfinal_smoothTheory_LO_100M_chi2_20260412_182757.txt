@@ -1,0 +1,5 @@
+Order: LO
+Theory file: /Users/shanesweetman/Desktop/TMD analysis week1/epemTMD-main-Final/theory_zscan_orders/theory_z_0p70_LO.dat
+60% cut chi-square summary (all valid bins)
+OS : chi2 = 17001.4, N = 40, chi2/N = 425.035
+SS : chi2 = 8314.12, N = 40, chi2/N = 207.853

@@ -1,0 +1,5 @@
+Order: NNLO
+Theory file: /Users/shanesweetman/Desktop/TMD analysis week1/epemTMD-main-Final/theory_zscan_orders/theory_z_0p70_NNLO.dat
+60% cut chi-square summary (all valid bins)
+OS : chi2 = 11430.7, N = 39, chi2/N = 293.095
+SS : chi2 = 9715.78, N = 30, chi2/N = 323.859

@@ -1,0 +1,17 @@
+60% cut comparison at z = 0.70
+
+LO: shared scale K = 78.5129
+  OS: chi2 = 17001.4, N = 40, chi2/N = 425.035
+  SS: chi2 = 8314.12, N = 40, chi2/N = 207.853
+
+NLO: shared scale K = 45.4065
+  OS: chi2 = 11359.1, N = 39, chi2/N = 291.26
+  SS: chi2 = 9505.12, N = 31, chi2/N = 306.617
+
+NNLO: shared scale K = 46.5504
+  OS: chi2 = 11430.7, N = 39, chi2/N = 293.095
+  SS: chi2 = 9715.78, N = 30, chi2/N = 323.859
+
+N3LO/current: shared scale K = 48.5851
+  OS: chi2 = 10803.7, N = 40, chi2/N = 270.092
+  SS: chi2 = 8869.34, N = 32, chi2/N = 277.167

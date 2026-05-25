@@ -1,0 +1,15 @@
+Shared-scale z=0.7 summary
+PYTHIA file: /Users/shanesweetman/Desktop/TMD analysis week1/TMD-Analysis/output_100M.root
+Theory file: /Users/shanesweetman/Desktop/TMD analysis week1/epemTMD-main-Final/epemCrossSection.dat
+
+Shared scales per cut
+  cut 0% : shape scale = 0.00170298, counts scale = 8746.62
+  cut 20% : shape scale = 0.00397893, counts scale = 2210.73
+  cut 40% : shape scale = 0.00537899, counts scale = 263.174
+  cut 60% : shape scale = 0.00674182, counts scale = 27.5484
+
+60% cut chi2 using all bins (counts)
+  shared counts scale = 27.5484
+  OS: chi2 = 4700.73, N = 40, chi2/N = 117.518
+  SS: chi2 = 4660.45, N = 32, chi2/N = 145.639
+  Combined: chi2 = 9361.18, Ntot = 72, chi2/(Ntot-1) = 131.848

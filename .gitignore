@@ -1,0 +1,27 @@
+.DS_Store
+
+*.o
+*.so
+*.dylib
+*.exe
+*.d
+*.pcm
+
+TMD
+herwig1
+build/
+cmake-build-*/
+
+*.root
+*.log
+*.tmp
+progress_*.txt
+
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Keep intentional documentation assets and PDF thesis/presentation files.
+!doc/assets/wicklow_mountains.jpg
+!thesis/*.pdf
+!presentations/**/*.pdf
