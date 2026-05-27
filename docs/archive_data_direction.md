@@ -1,6 +1,6 @@
 # Archived LEP Data Direction
 
-This repository is a simulation and theory-level analysis. It does not contain a detector-corrected extraction from real LEP data.
+This repository contains a simulation-level analysis. It does not contain a detector-corrected extraction from real LEP data.
 
 A natural future direction is to apply the observable to archived e+e- data from ALEPH or DELPHI. That would require:
 
@@ -12,4 +12,4 @@ A natural future direction is to apply the observable to archived e+e- data from
 - systematic uncertainty estimates
 - comparison with Monte Carlo and TMD-based theory curves under a controlled analysis definition
 
-The current repository is meant to make the simulation-level observable, code workflow, and thesis result understandable and reproducible on a small scale.
+The current repository documents the simulation-level observable, code workflow, and thesis result.

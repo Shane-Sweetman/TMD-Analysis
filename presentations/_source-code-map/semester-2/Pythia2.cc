@@ -8,24 +8,14 @@
 #include <iomanip>
 #include <sstream>
 #include <string>
-// src(iomanip formatting): https://en.cppreference.com/w/cpp/header/iomanip
-// src(ostringstream): https://en.cppreference.com/w/cpp/io/basic_ostringstream
-// src(std::string): https://en.cppreference.com/w/cpp/header/string
 
 #include "TFile.h"
 #include "TH1D.h"
 #include "TAxis.h"
-// src(ROOT I/O + histograms): https://root.cern/doc/master/classTFile.html  ;  https://root.cern/doc/master/classTH1.html
-// src(ROOT ownership / SetDirectory): https://root.cern/manual/object_ownership/
 
 #include "Pythia8/Pythia.h"
-// src(Pythia basic skeleton: readString/init/next/stat): https://github.com/mortenpi/pythia8/blob/master/examples/main01.cc
-// src(Pythia e+e- @ LEP1 / Z-pole style settings): https://pythia.org/latest-manual/examples/main103.html
-// src(Pythia event record API: mother/daughter, particle accessors): https://pythia.org/latest-manual/EventRecord.html
 
 #include "fastjet/ClusterSequence.hh"
-// src(FastJet clustering + constituents): https://fastjet.fr/repo/fastjet-doc-3.4.0.pdf
-// src(FastJet user_index mapping): https://fastjet.fr/repo/doxygen-3.4.0/classfastjet_1_1PseudoJet.html
 
 using namespace Pythia8;
 using namespace fastjet;
@@ -57,7 +47,6 @@ static inline double etaFromP(double px, double py, double pz) {
   if (t <= 0.0) return (pz >= 0.0 ? 1e9 : -1e9);
   return -std::log(t);
 }
-// src(eta definition via polar angle): standard; avoids relying on Particle::eta()
 
 // --- count histogram entries in a window around a target (e.g. 20 GeV) ---
 // ROOT note: TH1::FindBin is not const in ROOT 6.36, so use the axis FindBin instead.
@@ -106,7 +95,6 @@ std::pair<int, int> findZdecayQuarks(const Event& event) {
   }
   return {quark1, quark2};
 }
-// src(Pythia genealogy access: id/daughter1/daughter2): https://pythia.org/latest-manual/EventRecord.html
 
 struct AncestryResult {
   int steps = 0;
@@ -138,7 +126,6 @@ AncestryResult countStepsToQuark(const Event& event, int pion_idx, int targetQua
   }
   return result;
 }
-// src(Pythia ancestry walk via mother1): https://pythia.org/latest-manual/EventRecord.html
 
 double calculateThrust(const std::vector<fastjet::PseudoJet>& particles) {
   if (particles.empty()) return 0.0;
@@ -171,7 +158,6 @@ double calculateThrust(const std::vector<fastjet::PseudoJet>& particles) {
   }
   return maxThrust;
 }
-// src(Thrust definition / event-shape context): https://pythia.org/latest-manual/EventAnalysis.html
 
 struct PionInfo {
   int idx = -1;
@@ -611,7 +597,7 @@ int main(int argc, char* argv[]) {
       std::cout << "       px=" << p1.px() << " py=" << p1.py() << " pz=" << p1.pz() << " E=" << p1.e() << "\n";
 
       std::cout << "pair: dphi(pi0,pi1)=" << dphiPi << "  qT=" << qT << "\n";
-      std::cout << "src(note: indices refer to Pythia event record)\n";
+      std::cout << "note: indices refer to Pythia event record\n";
 
       if (!INTERACTIVE_MODE || !keepInteractive) return;
 

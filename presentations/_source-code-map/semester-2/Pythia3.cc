@@ -625,7 +625,7 @@ int main(int argc, char* argv[]) {
 
       if (!lineClosest.empty()) std::cout << lineClosest << "\n";
       if (!lineHighest.empty()) std::cout << lineHighest << "\n";
-      std::cout << "src(note: indices refer to Pythia event record)\n";
+      std::cout << "note: indices refer to Pythia event record\n";
 
       int startRow = 0;
       const int rowsPerPage = 25;

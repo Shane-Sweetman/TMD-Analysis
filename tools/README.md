@@ -2,7 +2,7 @@
 
 The `plotting/` directory contains selected ROOT macros and Python scripts used to inspect qT distributions, OS/SS ratios, momentum-fraction cut dependence, and comparisons to TMD-inspired theory curves.
 
-Several scripts assume local ROOT files or theory-curve text files that are not committed to GitHub. They are retained as provenance for the thesis workflow and as starting points for regenerating plots from externally stored analysis outputs.
+Some scripts assume local ROOT files or theory-curve text files that are not committed to GitHub. They are included to support regeneration of the thesis plots from externally stored analysis outputs.
 
 The main public plotting entry point is:
 
@@ -10,7 +10,7 @@ The main public plotting entry point is:
 make plots OUT=output.root PLOT_TAG=local
 ```
 
-For thesis-scale regenerated output:
+For thesis-scale output:
 
 ```bash
 make plots OUT=output_100M.root PLOT_TAG=100M

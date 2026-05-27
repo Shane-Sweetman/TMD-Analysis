@@ -1,6 +1,6 @@
 # Running the Analysis
 
-The public repository is designed around the root-level `Makefile`. VS Code, Vim, Xcode, or any other editor can be used for editing, but the analysis is built and run from a normal terminal.
+The repository is designed around the root-level `Makefile`. VS Code, Vim, Xcode, or any other editor can be used for editing, but the analysis is built and run from a normal terminal.
 
 The standard workflow is:
 
@@ -20,7 +20,7 @@ fastjet-config
 pythia8-config
 ```
 
-If those commands are already on `PATH` and point to the intended installations, no extra setup is needed.
+If those commands are already on `PATH` and point to the intended installations, no additional configuration is needed.
 
 If a command is missing, or if `pythia8-config` points to the wrong PYTHIA installation, copy the example local configuration:
 
@@ -36,7 +36,7 @@ FASTJET_CONFIG = /path/to/fastjet/bin/fastjet-config
 PYTHIA8_CONFIG = /path/to/pythia8315/bin/pythia8-config
 ```
 
-`local.mk` is ignored by git. This replaces repeatedly typing long `export PYTHIA=...` and `export FJ=...` commands in the terminal.
+`local.mk` is ignored by git and stores machine-specific dependency paths outside the tracked repository.
 
 ## Compile
 
@@ -78,7 +78,7 @@ The executable accepts the same values directly:
 ./tmd-pythia 10000 12345 output.root progress.txt
 ```
 
-For a larger local reproduction run:
+For a larger local run:
 
 ```bash
 make run EVENTS=1000000 SEED=12345 OUT=output_1M.root PROGRESS=progress_1M.txt
@@ -132,7 +132,7 @@ Generated PDFs, PNGs, and ROOT files are ignored by git.
 
 ## Regenerate the TMD-Theory Overlay
 
-The compact theory curves used for the public overlay are committed under:
+The compact theory curves used for the overlay are committed under:
 
 ```text
 data/theory/

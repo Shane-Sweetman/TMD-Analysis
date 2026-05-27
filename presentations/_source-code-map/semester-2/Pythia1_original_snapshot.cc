@@ -8,17 +8,10 @@
 
 #include "TFile.h"
 #include "TH1D.h"
-// src(ROOT I/O + histograms): https://root.cern/doc/master/classTFile.html  ;  https://root.cern/doc/master/classTH1.html
-// src(ROOT ownership / SetDirectory): https://root.cern/manual/object_ownership/
 
 #include "Pythia8/Pythia.h"
-// src(Pythia basic skeleton: readString/init/next/stat): https://github.com/mortenpi/pythia8/blob/master/examples/main01.cc
-// src(Pythia e+e- @ LEP1 / Z-pole style settings): https://pythia.org/latest-manual/examples/main103.html
-// src(Pythia event record API: mother/daughter, particle accessors): https://pythia.org/latest-manual/EventRecord.html
 
 #include "fastjet/ClusterSequence.hh"
-// src(FastJet clustering + constituents): https://fastjet.fr/repo/fastjet-doc-3.4.0.pdf
-// src(FastJet user_index mapping): https://fastjet.fr/repo/doxygen-3.4.0/classfastjet_1_1PseudoJet.html
 
 using namespace Pythia8;
 using namespace fastjet;
@@ -56,7 +49,6 @@ std::pair<int, int> findZdecayQuarks(const Event& event) {
   }
   return {quark1, quark2};
 }
-// src(Pythia genealogy access: id/daughter1/daughter2): https://pythia.org/latest-manual/EventRecord.html
 
 struct AncestryResult {
   int steps = 0;
@@ -88,7 +80,6 @@ AncestryResult countStepsToQuark(const Event& event, int pion_idx, int targetQua
   }
   return result;
 }
-// src(Pythia ancestry walk via mother1): https://pythia.org/latest-manual/EventRecord.html
 
 double calculateThrust(const std::vector<fastjet::PseudoJet>& particles) {
   if (particles.empty()) return 0.0;
@@ -121,7 +112,6 @@ double calculateThrust(const std::vector<fastjet::PseudoJet>& particles) {
   }
   return maxThrust;
 }
-// src(Thrust definition / event-shape context): https://pythia.org/latest-manual/EventAnalysis.html
 
 struct PionInfo {
   int idx = -1;
@@ -162,7 +152,6 @@ static inline bool pairBetterHighest(const PairChoice& x, const PairChoice& y) {
 
 int main() {
   TFile* fout = new TFile("pythia1.root", "RECREATE");
-  // src AIM: https://root.cern/doc/master/classTFile.html  ;  src ownership note: https://root.cern/manual/object_ownership/
 
   TH1D* h_closest_OS = new TH1D(
     "h_combined_pT_closestToQuark_OS",
@@ -192,7 +181,6 @@ int main() {
   h_closest_SS->SetDirectory(nullptr);
   h_highest_OS->SetDirectory(nullptr);
   h_highest_SS->SetDirectory(nullptr);
-  // src(SetDirectory / ownership): https://root.cern/manual/object_ownership/
 
   Pythia pythia;
   pythia.readString("Beams:idA = -11");
@@ -203,7 +191,6 @@ int main() {
   pythia.readString("WeakSingleBoson:ffbar2gmZ = on");
   pythia.readString("Random:setSeed = on");
   pythia.readString("Random:seed = 123456788");
-  // src(Pythia ee @ LEP1 config pattern): https://pythia.org/latest-manual/examples/main103.html
 
   if (!pythia.init()) {
     std::cerr << "Pythia initialization failed\n";
@@ -225,7 +212,6 @@ int main() {
   for (int ievt = 0; ievt < nEvents; ++ievt) {
     if (!pythia.next()) continue;
     nProcessed++;
-    // src(event loop idiom next()/continue + stat() later): https://github.com/mortenpi/pythia8/blob/master/examples/main01.cc
 
     if ((ievt + 1) % 1000 == 0)
       std::cout << "Processed " << (ievt + 1) << " events...\n";
@@ -241,7 +227,6 @@ int main() {
       finals.push_back(i);
     }
     if (finals.empty()) continue;
-    // src(isFinal/isVisible + accessors): https://pythia.org/latest-manual/ParticleProperties.html
 
     std::vector<PseudoJet> fjInputs;
     fjInputs.reserve(finals.size());
@@ -253,7 +238,6 @@ int main() {
       pj.set_user_index(idx);
       fjInputs.push_back(pj);
     }
-    // src(map constituents back to inputs): https://fastjet.fr/repo/doxygen-3.4.0/classfastjet_1_1PseudoJet.html
 
     double thrust = calculateThrust(fjInputs);
     if (thrust < thrustCut) continue;
@@ -261,7 +245,6 @@ int main() {
     JetDefinition jetDef(antikt_algorithm, R);
     ClusterSequence cs(fjInputs, jetDef);
     std::vector<PseudoJet> jets = sorted_by_pt(cs.inclusive_jets(jetPtMin));
-    // src(ClusterSequence / inclusive_jets / sorted_by_pt): https://fastjet.fr/repo/fastjet-doc-3.4.0.pdf
 
     if (jets.size() != 2) continue;
     n2Jets++;
@@ -292,7 +275,6 @@ int main() {
       }
       return out;
     };
-    // src(constituents + user_index; EventRecord id/mother1; Particle pT): https://pythia.org/latest-manual/EventRecord.html
 
     auto pions0 = collectPions(jet0);
     auto pions1 = collectPions(jet1);

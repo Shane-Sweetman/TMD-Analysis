@@ -1,4 +1,4 @@
-# This file is optional. The Makefile first tries to use standard config
+# Optional local configuration. The Makefile first tries to use standard config
 # commands such as root-config, fastjet-config, and pythia8-config.
 #
 # If those commands are not on PATH, or if pythia8-config points to the wrong

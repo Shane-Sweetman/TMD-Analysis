@@ -17,4 +17,4 @@ The main workflow is:
 
 The final analysis source is [../src/pythia/Pythia1.cc](../src/pythia/Pythia1.cc).
 
-The repository intentionally preserves the final analysis and selected plotting scripts, not every exploratory prototype created during the project.
+The repository preserves the final analysis and selected plotting scripts rather than the exploratory development history.
