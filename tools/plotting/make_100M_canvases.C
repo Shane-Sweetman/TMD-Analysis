@@ -188,13 +188,14 @@ static void drawCellOSSS(TPad* cell,
   gRatio->Draw("P E1 SAME");
 }
 
-void make_100M_canvases() {
+void make_100M_canvases(const char* inputFile = "output_100M.root",
+                        const char* outputTag = "100M") {
   gStyle->SetOptStat(0);
   gStyle->SetEndErrorSize(5);
 
-  TFile *f = TFile::Open("output_100M.root", "UPDATE");
+  TFile *f = TFile::Open(inputFile, "UPDATE");
   if (!f || f->IsZombie()) {
-    std::cout << "Could not open output_100M.root\n";
+    std::cout << "Could not open " << inputFile << "\n";
     return;
   }
 
@@ -212,23 +213,29 @@ void make_100M_canvases() {
     }
   }
 
-  auto cCounts = new TCanvas("c_qT_OSSS_4cuts_pion_counts_100M", "Pion OS vs SS counts 100M", 1400, 900);
+  TString tag(outputTag);
+
+  auto cCounts = new TCanvas(Form("c_qT_OSSS_4cuts_pion_counts_%s", tag.Data()),
+                             Form("Pion OS vs SS counts %s", tag.Data()),
+                             1400, 900);
   cCounts->Divide(2,2,0.01,0.01);
   for (int i = 0; i < 4; ++i) {
     cCounts->cd(i+1);
     drawCellOSSS((TPad*)gPad, hOS[i], hSS[i],
-                 Form("pion_cut%d_counts_100M", cuts[i]),
+                 Form("pion_cut%d_counts_%s", cuts[i], tag.Data()),
                  Form("Highest pair   cut %d%%", cuts[i]),
                  10.0,
                  false);
   }
 
-  auto cNorm = new TCanvas("c_qT_OSSS_4cuts_pion_norm_100M", "Pion OS vs SS normalised 100M", 1400, 900);
+  auto cNorm = new TCanvas(Form("c_qT_OSSS_4cuts_pion_norm_%s", tag.Data()),
+                           Form("Pion OS vs SS normalised %s", tag.Data()),
+                           1400, 900);
   cNorm->Divide(2,2,0.01,0.01);
   for (int i = 0; i < 4; ++i) {
     cNorm->cd(i+1);
     drawCellOSSS((TPad*)gPad, hOS[i], hSS[i],
-                 Form("pion_cut%d_norm_100M", cuts[i]),
+                 Form("pion_cut%d_norm_%s", cuts[i], tag.Data()),
                  Form("Highest pair   cut %d%%", cuts[i]),
                  10.0,
                  true);
@@ -237,10 +244,10 @@ void make_100M_canvases() {
   cCounts->Write("", TObject::kOverwrite);
   cNorm->Write("", TObject::kOverwrite);
 
-  cCounts->SaveAs("c_qT_OSSS_4cuts_pion_counts_100M.pdf");
-  cCounts->SaveAs("c_qT_OSSS_4cuts_pion_counts_100M.png");
-  cNorm->SaveAs("c_qT_OSSS_4cuts_pion_norm_100M.pdf");
-  cNorm->SaveAs("c_qT_OSSS_4cuts_pion_norm_100M.png");
+  cCounts->SaveAs(Form("c_qT_OSSS_4cuts_pion_counts_%s.pdf", tag.Data()));
+  cCounts->SaveAs(Form("c_qT_OSSS_4cuts_pion_counts_%s.png", tag.Data()));
+  cNorm->SaveAs(Form("c_qT_OSSS_4cuts_pion_norm_%s.pdf", tag.Data()));
+  cNorm->SaveAs(Form("c_qT_OSSS_4cuts_pion_norm_%s.png", tag.Data()));
 
   f->Close();
 }

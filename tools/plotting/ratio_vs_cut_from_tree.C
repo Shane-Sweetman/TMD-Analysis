@@ -8,13 +8,15 @@
 #include "TGraphErrors.h"
 #include "TH1D.h"
 #include "TStyle.h"
+#include "TString.h"
 
-void ratio_vs_cut_from_tree() {
+void ratio_vs_cut_from_tree(const char* inputFile = "output_100M.root",
+                            const char* outputTag = "100M") {
   gStyle->SetOptStat(0);
 
-  TFile* f = TFile::Open("output_100M.root", "READ");
+  TFile* f = TFile::Open(inputFile, "READ");
   if (!f || f->IsZombie()) {
-    std::cerr << "Could not open output_100M.root\n";
+    std::cerr << "Could not open " << inputFile << "\n";
     return;
   }
 
@@ -84,13 +86,18 @@ void ratio_vs_cut_from_tree() {
   g->GetXaxis()->SetLimits(0, 85);
   g->GetYaxis()->SetRangeUser(0.5, 7.5);
 
-  TFile fout("ratio_vs_cut_from_tree.root", "RECREATE");
+  TString tag(outputTag);
+  TString rootName = Form("ratio_vs_cut_from_tree_%s.root", tag.Data());
+  TString pdfName = Form("ratio_vs_cut_from_tree_%s.pdf", tag.Data());
+  TString pngName = Form("ratio_vs_cut_from_tree_%s.png", tag.Data());
+
+  TFile fout(rootName, "RECREATE");
   g->Write("g_ratio_vs_cut");
   c->Write();
   fout.Close();
 
-  c->SaveAs("ratio_vs_cut_from_tree.pdf");
-  c->SaveAs("ratio_vs_cut_from_tree.png");
+  c->SaveAs(pdfName);
+  c->SaveAs(pngName);
 
-  std::cout << "Saved ratio_vs_cut_from_tree.root/.pdf/.png\n";
+  std::cout << "Saved " << rootName << ", " << pdfName << ", " << pngName << "\n";
 }

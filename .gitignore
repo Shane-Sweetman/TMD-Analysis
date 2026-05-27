@@ -8,14 +8,32 @@
 *.pcm
 
 TMD
+tmd-pythia
 herwig1
+local.mk
 build/
 cmake-build-*/
 
 *.root
 *.log
 *.tmp
+progress.txt
 progress_*.txt
+
+c_qT_OSSS_4cuts_pion_counts_*.pdf
+c_qT_OSSS_4cuts_pion_counts_*.png
+c_qT_OSSS_4cuts_pion_norm_*.pdf
+c_qT_OSSS_4cuts_pion_norm_*.png
+ratio_vs_cut_from_tree*.pdf
+ratio_vs_cut_from_tree*.png
+tmd_theory_overlay_*.root
+tmd_theory_overlay_*.pdf
+tmd_theory_overlay_*.png
+tmd_theory_overlay_chi2_*.txt
+figure20_peakmatch_overlay_*.root
+figure20_peakmatch_overlay_*.pdf
+figure20_peakmatch_overlay_*.png
+figure20_peakmatch_overlay_chi2_*.txt
 
 __pycache__/
 *.pyc

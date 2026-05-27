@@ -108,35 +108,19 @@ double theoryMax(const TheoryData& th, double scale, bool useOS, double xMax) {
   return out;
 }
 
-double computeSharedScale(const TH1D* hOS,
-                          const TH1D* hSS,
-                          const TheoryData& th,
-                          double xMax) {
-  double num = 0.0;
-  double den = 0.0;
+double theoryPeakOS(const TheoryData& th) {
+  if (th.os.empty()) return 0.0;
+  return *std::max_element(th.os.begin(), th.os.end());
+}
 
-  auto accumulate = [&](const TH1D* h, bool useOS) {
-    for (int b = 1; b <= h->GetNbinsX(); ++b) {
-      double x   = h->GetBinCenter(b);
-      if (x > xMax) continue;
-
-      double mc  = h->GetBinContent(b);
-      double err = h->GetBinError(b);
-      double tv  = theoryEval(th, x, useOS);
-
-      if (err <= 0.0) continue;
-      if (!std::isfinite(tv) || tv <= 0.0) continue;
-
-      num += mc * tv / (err * err);
-      den += tv * tv / (err * err);
-    }
-  };
-
-  accumulate(hOS, true);
-  accumulate(hSS, false);
-
-  if (den <= 0.0) return 0.0;
-  return num / den;
+double pythiaPeakOS(const TH1D* h, double xMax) {
+  double out = 0.0;
+  for (int b = 1; b <= h->GetNbinsX(); ++b) {
+    double x = h->GetBinCenter(b);
+    if (x > xMax) continue;
+    out = std::max(out, h->GetBinContent(b));
+  }
+  return out;
 }
 
 Chi2Result computeChi2(const TH1D* hMC,
@@ -180,7 +164,7 @@ TGraph* makeScaledTheoryGraph(const TheoryData& th, double scale, bool useOS, Co
   }
 
   g->SetLineColor(col);
-  g->SetLineWidth(1);
+  g->SetLineWidth(2);
   g->SetLineStyle(2);
   return g;
 }
@@ -194,7 +178,7 @@ TGraphAsymmErrors* makeBand(const TH1D* h, Color_t col, double alpha) {
   return g;
 }
 
-TGraphErrors* makeBlackPointErrors(const TH1D* h, int markerStyle = 20, double markerSize = 0.45) {
+TGraphErrors* makeBlackPointErrors(const TH1D* h, int markerStyle = 20, double markerSize = 0.35) {
   TGraphErrors* g = new TGraphErrors(h);
 
   for (int i = 0; i < g->GetN(); ++i) {
@@ -242,7 +226,7 @@ TGraphErrors* makeRatioGraph(const TH1D* hMC,
   g->SetLineWidth(0);
   g->SetMarkerColor(col);
   g->SetMarkerStyle(20);
-  g->SetMarkerSize(0.60);
+  g->SetMarkerSize(0.55);
   return g;
 }
 
@@ -316,8 +300,8 @@ void drawCellCombined(TPad* cell,
   TGraphAsymmErrors* gOSBand = makeBand(hOS, kRed + 2, 0.28);
   TGraphAsymmErrors* gSSBand = makeBand(hSS, kBlue + 2, 0.28);
 
-  TGraphErrors* gOSPts = makeBlackPointErrors(hOS, 20, 0.30);
-  TGraphErrors* gSSPts = makeBlackPointErrors(hSS, 20, 0.30);
+  TGraphErrors* gOSPts = makeBlackPointErrors(hOS);
+  TGraphErrors* gSSPts = makeBlackPointErrors(hSS);
 
   pTop->cd();
 
@@ -516,13 +500,14 @@ void drawCellSingle(TPad* cell,
   gPad->RedrawAxis();
 }
 
-void resultsfinal_smoothTheory_multi_edited() {
+void resultsfinal_smoothTheory_multi_edited(
+  const char* pythiaFile = "output.root",
+  const char* theoryFile = "data/theory/epemCrossSection_z0p70.dat",
+  const char* outputTag = "public"
+) {
   gROOT->SetBatch(kTRUE);
   gStyle->SetOptStat(0);
   gStyle->SetEndErrorSize(1);
-
-  const char* pythiaFile = "/Users/shanesweetman/Desktop/TMD analysis week1/TMD-Analysis/output_100M.root";
-  const char* theoryFile = "/Users/shanesweetman/Desktop/TMD analysis week1/epemTMD-main-Final/epemCrossSection.dat";
 
   const double xPlotMax      = 10.0;
   const double xRatioAxisMax = 10.0;
@@ -530,6 +515,12 @@ void resultsfinal_smoothTheory_multi_edited() {
 
   TheoryData th;
   if (!loadTheoryData(theoryFile, th)) return;
+
+  double thPeakOS = theoryPeakOS(th);
+  if (thPeakOS <= 0.0) {
+    std::cerr << "Theory OS peak is not positive.\n";
+    return;
+  }
 
   TFile* f = TFile::Open(pythiaFile, "READ");
   if (!f || f->IsZombie()) {
@@ -549,18 +540,25 @@ void resultsfinal_smoothTheory_multi_edited() {
     hRawSS[c] = dynamic_cast<TH1D*>(f->Get(nameSS));
 
     if (!hRawOS[c] || !hRawSS[c]) {
-      std::cerr << "Could not find " << nameOS << " or " << nameSS << " in output_100M.root\n";
+      std::cerr << "Could not find " << nameOS << " or " << nameSS << " in " << pythiaFile << "\n";
       return;
     }
 
     TH1D* hOSShape = makeDisplayHist(hRawOS[c], Form("hOSShape_scale_%d", c), true);
     TH1D* hSSShape = makeDisplayHist(hRawSS[c], Form("hSSShape_scale_%d", c), true);
 
-    sharedScaleShape[c]  = computeSharedScale(hOSShape, hSSShape, th, xPlotMax);
-    sharedScaleCounts[c] = computeSharedScale(hRawOS[c], hRawSS[c], th, xPlotMax);
+    double pyPeakShapeOS = pythiaPeakOS(hOSShape, xPlotMax);
+    double pyPeakCountsOS = pythiaPeakOS(hRawOS[c], xPlotMax);
 
-    std::cout << "cut " << c << "% : shared shape scale = " << sharedScaleShape[c]
-              << ", shared counts scale = " << sharedScaleCounts[c] << "\n";
+    sharedScaleShape[c]  = (pyPeakShapeOS > 0.0)  ? pyPeakShapeOS  / thPeakOS : 0.0;
+    sharedScaleCounts[c] = (pyPeakCountsOS > 0.0) ? pyPeakCountsOS / thPeakOS : 0.0;
+
+    std::cout << "cut " << c
+              << "% : PYTHIA OS peak = " << pyPeakCountsOS
+              << " , theory OS peak = " << thPeakOS
+              << " , peak-matched counts scale K = " << sharedScaleCounts[c]
+              << " , peak-matched shape scale K = " << sharedScaleShape[c]
+              << "\n";
   }
 
   TCanvas* cCombinedNorm = new TCanvas("cCombinedNorm", "combined norm", 1400, 900);
@@ -638,20 +636,18 @@ void resultsfinal_smoothTheory_multi_edited() {
   int combinedN = osCountsAll.nPoints + ssCountsAll.nPoints;
   double combinedReduced = (combinedN > 1) ? combinedChi2 / (combinedN - 1) : 0.0;
 
-  TDatime now;
-  TString tag = Form("%04d%02d%02d_%02d%02d%02d",
-                     now.GetYear(), now.GetMonth(), now.GetDay(),
-                     now.GetHour(), now.GetMinute(), now.GetSecond());
+  TString tag(outputTag);
+  if (tag.Length() == 0) tag = "public";
 
-  TString txtName = Form("resultsfinal_sharedScale_100M_chi2_%s.txt", tag.Data());
+  TString txtName = Form("tmd_theory_overlay_chi2_%s.txt", tag.Data());
   std::ofstream foutTxt(txtName.Data());
 
   auto& os = foutTxt;
-  os << "Shared-scale z=0.7 summary\n";
+  os << "OS-peak-matched z=0.7 summary\n";
   os << "PYTHIA file: " << pythiaFile << "\n";
   os << "Theory file: " << theoryFile << "\n\n";
 
-  os << "Shared scales per cut\n";
+  os << "Peak-matched scales per cut\n";
   for (int c : cuts) {
     os << "  cut " << c << "% : shape scale = " << sharedScaleShape[c]
        << ", counts scale = " << sharedScaleCounts[c] << "\n";
@@ -659,7 +655,7 @@ void resultsfinal_smoothTheory_multi_edited() {
   os << "\n";
 
   os << "60% cut chi2 using all bins (counts)\n";
-  os << "  shared counts scale = " << sharedScaleCounts[chiCut] << "\n";
+  os << "  peak-matched counts scale = " << sharedScaleCounts[chiCut] << "\n";
   os << "  OS: chi2 = " << osCountsAll.chi2
      << ", N = " << osCountsAll.nPoints
      << ", chi2/N = " << osChi2PerN << "\n";
@@ -672,7 +668,7 @@ void resultsfinal_smoothTheory_multi_edited() {
   foutTxt.close();
 
   std::cout << "\n60% cut chi2 using all bins (counts)\n";
-  std::cout << "  shared counts scale = " << sharedScaleCounts[chiCut] << "\n";
+  std::cout << "  peak-matched counts scale = " << sharedScaleCounts[chiCut] << "\n";
   std::cout << "  OS: chi2 = " << osCountsAll.chi2
             << ", N = " << osCountsAll.nPoints
             << ", chi2/N = " << osChi2PerN << "\n";
@@ -683,21 +679,21 @@ void resultsfinal_smoothTheory_multi_edited() {
             << ", Ntot = " << combinedN
             << ", chi2/(Ntot-1) = " << combinedReduced << "\n\n";
 
-  TString rootName = Form("resultsfinal_smoothTheory_sharedScale_100M_%s.root", tag.Data());
+  TString rootName = Form("tmd_theory_overlay_%s.root", tag.Data());
 
-  TString pdfCombinedNorm   = Form("resultsfinal_combined_norm_sharedScale_100M_%s.pdf",   tag.Data());
-  TString pdfOSNorm         = Form("resultsfinal_os_norm_sharedScale_100M_%s.pdf",         tag.Data());
-  TString pdfSSNorm         = Form("resultsfinal_ss_norm_sharedScale_100M_%s.pdf",         tag.Data());
-  TString pdfCombinedCounts = Form("resultsfinal_combined_counts_sharedScale_100M_%s.pdf", tag.Data());
-  TString pdfOSCounts       = Form("resultsfinal_os_counts_sharedScale_100M_%s.pdf",       tag.Data());
-  TString pdfSSCounts       = Form("resultsfinal_ss_counts_sharedScale_100M_%s.pdf",       tag.Data());
+  TString pdfCombinedNorm   = Form("tmd_theory_overlay_norm_%s.pdf",      tag.Data());
+  TString pdfOSNorm         = Form("tmd_theory_overlay_os_norm_%s.pdf",   tag.Data());
+  TString pdfSSNorm         = Form("tmd_theory_overlay_ss_norm_%s.pdf",   tag.Data());
+  TString pdfCombinedCounts = Form("tmd_theory_overlay_counts_%s.pdf",    tag.Data());
+  TString pdfOSCounts       = Form("tmd_theory_overlay_os_counts_%s.pdf", tag.Data());
+  TString pdfSSCounts       = Form("tmd_theory_overlay_ss_counts_%s.pdf", tag.Data());
 
-  TString pngCombinedNorm   = Form("resultsfinal_combined_norm_sharedScale_100M_%s.png",   tag.Data());
-  TString pngOSNorm         = Form("resultsfinal_os_norm_sharedScale_100M_%s.png",         tag.Data());
-  TString pngSSNorm         = Form("resultsfinal_ss_norm_sharedScale_100M_%s.png",         tag.Data());
-  TString pngCombinedCounts = Form("resultsfinal_combined_counts_sharedScale_100M_%s.png", tag.Data());
-  TString pngOSCounts       = Form("resultsfinal_os_counts_sharedScale_100M_%s.png",       tag.Data());
-  TString pngSSCounts       = Form("resultsfinal_ss_counts_sharedScale_100M_%s.png",       tag.Data());
+  TString pngCombinedNorm   = Form("tmd_theory_overlay_norm_%s.png",      tag.Data());
+  TString pngOSNorm         = Form("tmd_theory_overlay_os_norm_%s.png",   tag.Data());
+  TString pngSSNorm         = Form("tmd_theory_overlay_ss_norm_%s.png",   tag.Data());
+  TString pngCombinedCounts = Form("tmd_theory_overlay_counts_%s.png",    tag.Data());
+  TString pngOSCounts       = Form("tmd_theory_overlay_os_counts_%s.png", tag.Data());
+  TString pngSSCounts       = Form("tmd_theory_overlay_ss_counts_%s.png", tag.Data());
 
   TFile fout(rootName, "RECREATE");
   cCombinedNorm->Write();

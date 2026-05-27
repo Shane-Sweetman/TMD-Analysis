@@ -16,6 +16,15 @@ The analysis uses PYTHIA 8 to generate e+e- -> Z/gamma* -> q qbar events at sqrt
 
 The public repository is intentionally compact: it keeps the final PYTHIA analysis, selected plotting and summary scripts, thesis material, and presentation provenance. Large generated ROOT files, temporary logs, binaries, and exploratory prototypes are not committed.
 
+## Download
+
+Clone the repository and enter the project directory:
+
+```bash
+git clone https://github.com/Shane-Sweetman/TMD-Analysis.git
+cd TMD-Analysis
+```
+
 ## Physics Motivation
 
 Transverse-momentum-dependent fragmentation functions describe how partonic transverse motion and hadronization structure appear in final-state hadron distributions. In e+e- annihilation, the absence of hadronic initial-state structure makes the channel a clean environment for studying fragmentation.
@@ -40,10 +49,11 @@ See [docs/observable.md](docs/observable.md) for the full definition.
 ```text
 TMD-Analysis/
 ├── README.md
+├── Makefile                    # Terminal-first build/run interface
+├── config/                     # Example local dependency configuration
 ├── doc/assets/                  # README banner image
 ├── docs/                        # Physics and workflow notes
-├── .vscode/                     # VS Code tasks for build/run/test
-├── scripts/                     # Bash-first compile/run helpers
+├── scripts/                     # Optional terminal helpers
 ├── src/pythia/                  # Main PYTHIA analysis source
 ├── tools/plotting/              # ROOT/Python plotting and summary scripts
 ├── results/                     # Small result summaries and regeneration policy
@@ -56,41 +66,48 @@ The presentation source-code map is kept under `presentations/_source-code-map/`
 
 ## Dependencies
 
-The original thesis workflow used explicit local compile/run commands. This public version provides a small root-level `Makefile` so the code can be tested with a standard command-line interface. It is a convenience wrapper around the ROOT/PYTHIA/FastJet command, not a CMake project.
+The original thesis workflow used explicit local compile/run commands. This public version provides a root-level `Makefile` so the code can be built and run from a normal terminal. It is a convenience wrapper around the ROOT/PYTHIA/FastJet command, not a CMake project.
 
 Required for the PYTHIA analysis:
 
 - C++17 compiler, tested with `g++`
-- ROOT, with `root-config` on `PATH`
+- ROOT, with `root-config` available
 - PYTHIA 8
 - FastJet
 
-Typical local paths used during the thesis work were:
+The Makefile follows the standard HEP pattern of querying installed packages through configuration commands:
 
 ```bash
-export PYTHIA=/Users/shanesweetman/Downloads/pythia/pythia8315
-export FJ=/Users/shanesweetman/Downloads/fastjet
+root-config
+fastjet-config
+pythia8-config
 ```
+
+If those commands are already visible on your `PATH`, `make` should work directly. If one of them is missing, or if `pythia8-config` points to the wrong PYTHIA installation, copy the example configuration once:
+
+```bash
+cp config/local.mk.example local.mk
+```
+
+Then edit `local.mk` with the correct config-command paths. The file `local.mk` is ignored by git, so each user can keep their own machine-specific ROOT/PYTHIA/FastJet paths without changing the public repository.
 
 ## Quick Start
 
-From the repository root:
+From the repository root, build the analysis and run a small local sample:
 
 ```bash
-make test
-make open
+make
+make run EVENTS=10000 SEED=12345 OUT=output.root PROGRESS=progress.txt
+make open OUT=output.root
 ```
 
-In VS Code, open the repository and use:
+The Makefile is the recommended interface because it keeps the local ROOT, PYTHIA, and FastJet paths in one place and sets the runtime library path only for the analysis command. The compiled executable can also be run directly:
 
-```text
-Terminal > Run Task... > TMD: Smoke Test (10k events)
-Terminal > Run Task... > TMD: Open ROOT Browser
+```bash
+./tmd-pythia [events] [seed] [output-root-file] [progress-file]
 ```
 
-Local dependency paths for VS Code tasks are stored in `.vscode/settings.json`. See [docs/vscode.md](docs/vscode.md).
-
-The default run is intentionally small. Thesis-scale runs used much larger samples, up to 100M events, and produced large ROOT files that are not suitable for GitHub.
+The quick-start command is intentionally small. Thesis-scale runs used much larger samples, up to 100M events, and produced large ROOT files that are not suitable for GitHub.
 
 ## Running the PYTHIA Analysis
 
@@ -100,14 +117,22 @@ The main source is [src/pythia/Pythia1.cc](src/pythia/Pythia1.cc). It writes a R
 - OS and SS qT histograms for pion momentum-fraction cuts
 - ROOT canvases for the cut-dependent OS/SS comparison
 
-Run with local dependency paths:
+Compile:
 
 ```bash
-PYTHIA=/path/to/pythia8315 \
-FJ=/path/to/fastjet \
-EVENTS=10000 \
-SEED=12345 \
-make run
+make
+```
+
+Run a small local sample:
+
+```bash
+make run EVENTS=10000 SEED=12345 OUT=output.root PROGRESS=progress.txt
+```
+
+Run a larger sample:
+
+```bash
+make run EVENTS=1000000 SEED=12345 OUT=output_1M.root PROGRESS=progress_1M.txt
 ```
 
 Useful targets:
@@ -115,9 +140,10 @@ Useful targets:
 ```bash
 make help
 make print-config
-make build
-make test
-make run EVENTS=100000 SEED=12345 OUT=output.root
+make
+make run EVENTS=100000 SEED=12345 OUT=output.root PROGRESS=progress.txt
+make plots OUT=output.root PLOT_TAG=local
+make theory-overlay OUT=output.root PLOT_TAG=local
 make clean
 ```
 
@@ -127,6 +153,27 @@ For more practical commands, see [docs/running.md](docs/running.md).
 
 ```bash
 make open OUT=output.root
+```
+
+Selected ROOT plots can be regenerated from a local output file:
+
+```bash
+make plots OUT=output.root PLOT_TAG=local
+```
+
+The Figure 20-style PYTHIA/TMD-theory overlay can be regenerated using the included theory data. The theory curves are scaled in each cut panel by matching the maximum PYTHIA OS bin and applying the same factor to the SS theory curve:
+
+```bash
+make theory-overlay OUT=output.root PLOT_TAG=local
+make open OUT=figure20_peakmatch_overlay_local.root
+```
+
+To reproduce the thesis-style comparison with a larger local sample, run:
+
+```bash
+make run EVENTS=1000000 SEED=12345 OUT=output_1M.root PROGRESS=progress_1M.txt
+make theory-overlay OUT=output_1M.root PLOT_TAG=1M_peakmatch
+make open OUT=figure20_peakmatch_overlay_1M_peakmatch.root
 ```
 
 ## Results Summary

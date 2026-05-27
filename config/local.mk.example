@@ -1,0 +1,24 @@
+# This file is optional. The Makefile first tries to use standard config
+# commands such as root-config, fastjet-config, and pythia8-config.
+#
+# If those commands are not on PATH, or if pythia8-config points to the wrong
+# installation, copy this file to local.mk in the repository root and edit the
+# paths for your machine:
+#
+#   cp config/local.mk.example local.mk
+#
+# The Makefile includes local.mk automatically if it exists. local.mk is ignored
+# by git because ROOT, PYTHIA, and FastJet are normally installed in different
+# locations on different machines.
+
+# Configuration commands.
+ROOT_CONFIG = root-config
+FASTJET_CONFIG = fastjet-config
+PYTHIA8_CONFIG = pythia8-config
+
+# If pythia8-config is not on PATH, use the full path instead, e.g.
+# PYTHIA8_CONFIG = /path/to/pythia8315/bin/pythia8-config
+
+# Optional compiler settings.
+CXX = g++
+CXXFLAGS = -O2 -std=c++17

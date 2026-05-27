@@ -8,8 +8,8 @@
 //   - c_qT_OSSS_pion_cut{0,20,40,60}_counts
 //   - c_qT_OSSS_pion_cut{0,20,40,60}_norm
 //
-// Run: ./TMD [NEVENTS] [SEED] [OUTFILE] [PROGRESSFILE]
-// Example: ./TMD 25000000 11111 output_1.root progress_1.txt
+// Run: ./tmd-pythia [NEVENTS] [SEED] [OUTFILE] [PROGRESSFILE]
+// Example: ./tmd-pythia 25000000 11111 output_1.root progress_1.txt
 
 #include <iostream>
 #include <vector>
